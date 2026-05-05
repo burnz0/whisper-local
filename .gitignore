@@ -1,0 +1,4 @@
+data/uploads/
+data/transcripts/
+__pycache__/
+*.pyc

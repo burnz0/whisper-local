@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Whisper Local</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 12h2M7 9v6M10 5v14M13 8v8M16 4v16M19 9v6" />
+          </svg>
+        </div>
+        <div>
+          <h1>Whisper Local</h1>
+          <p>Private. Local. Secure.</p>
+        </div>
+      </div>
+
+      <a class="primary-action" href="{{ url_for('index') }}">
+        <span>+</span>
+        New Transcription
+      </a>
+
+      <nav class="nav" id="sidebar-nav">
+        <button class="nav-item active" type="button" data-sidebar-target="history-panel">History</button>
+        <button class="nav-item" type="button" data-sidebar-target="settings-panel">Settings</button>
+      </nav>
+
+      <section class="sidebar-settings sidebar-panel" id="settings-panel" hidden>
+        <header>
+          <span>App Settings</span>
+        </header>
+        <form action="{{ url_for('settings_route') }}" method="post" class="sidebar-settings__form">
+          <label>
+            <span>Default model</span>
+            <select name="default_model">
+              {% for model in models %}
+              <option value="{{ model }}" {% if model == settings.default_model %}selected{% endif %}>{{ model|capitalize }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            <span>Default language</span>
+            <select name="default_language">
+              {% for code, label in languages.items() %}
+              <option value="{{ code }}" {% if code == settings.default_language %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            <span>Summary density</span>
+            <select name="summary_sentences">
+              {% for count in range(1, 7) %}
+              <option value="{{ count }}" {% if count == settings.summary_sentences %}selected{% endif %}>Level {{ count }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            <span>Summary engine</span>
+            <select name="summary_provider">
+              {% for code, label in summary_providers.items() %}
+              <option value="{{ code }}" {% if code == settings.summary_provider %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" name="autoplay_on_seek" {% if settings.autoplay_on_seek %}checked{% endif %}>
+            <span>Autoplay when jumping to a segment</span>
+          </label>
+          <label class="toggle-row">
+            <input type="checkbox" name="confirm_before_delete" {% if settings.confirm_before_delete %}checked{% endif %}>
+            <span>Ask before deleting transcripts</span>
+          </label>
+          <button type="submit" class="secondary-action">Save settings</button>
+        </form>
+      </section>
+
+      <section class="library sidebar-panel" id="history-panel">
+        <header>
+          <span>Recent Transcriptions</span>
+        </header>
+        <div class="library-list">
+          {% for record in records %}
+          <div class="library-row" data-record-row="{{ record.id }}">
+            <a class="library-card {% if selected and selected.id == record.id %}is-active{% endif %}" href="{{ url_for('transcript_detail', record_id=record.id) }}" data-record-link="{{ record.id }}">
+              <div class="library-card__icon">▶</div>
+              <div class="library-card__body">
+                <strong data-record-title="{{ record.id }}">{{ record.title }}</strong>
+                <small>{{ record.created_at[11:16] }} • {{ "%.0f"|format(record.duration_seconds) }}s • {{ languages[record.language] }}</small>
+              </div>
+            </a>
+            <button class="library-delete" type="button" data-delete-record="{{ record.id }}" aria-label="Delete transcription">×</button>
+          </div>
+          {% else %}
+          <div class="library-empty">No saved transcriptions yet.</div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div class="local-note">
+        <strong>Everything stays local</strong>
+        <p>Your files and transcripts remain inside this repo.</p>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      {% if error %}
+      <div class="flash flash-error">{{ error }}</div>
+      {% endif %}
+
+      <section class="composer">
+        <div class="upload-card {% if selected %}is-compact{% endif %}" id="upload-card">
+          <div class="upload-icon">⌂</div>
+          <h2>{% if selected %}Add audio{% else %}Upload audio{% endif %}</h2>
+          <p>{% if selected %}Drop in another recording or adjust defaults.{% else %}Choose a file or drag it here.{% endif %}</p>
+          <form action="{{ url_for('transcribe_route') }}" method="post" enctype="multipart/form-data" class="transcribe-form">
+            <label class="file-picker">
+              <input type="file" id="audio-file-input" name="audio_file" accept="{{ upload_accept }}" required>
+              <span>Choose file</span>
+            </label>
+            <small id="selected-file-name">Supported formats: ogg, mp3, wav, m4a, flac, webm</small>
+
+            <div class="settings-card" id="settings-card">
+              <h3>Model settings</h3>
+              <label class="inline-field">
+                <span>Model size</span>
+                <select name="model">
+                  {% for model in models %}
+                  <option value="{{ model }}" {% if model == default_model %}selected{% endif %}>{{ model|capitalize }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="inline-field">
+                <span>Language</span>
+                <select name="language">
+                  {% for code, label in languages.items() %}
+                  <option value="{{ code }}" {% if code == default_language %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+            </div>
+
+            <button type="submit" class="transcribe-button">Transcribe</button>
+            <p class="subtle">Transcription can take a few minutes depending on file length.</p>
+          </form>
+        </div>
+
+        <div class="detail-panel">
+          {% if selected %}
+          <header class="detail-header">
+            <div>
+              <div class="title-row">
+                <h2 id="record-title">{{ selected.title }}</h2>
+                <button class="icon-button" id="rename-button" data-record-id="{{ selected.id }}" title="Rename title">✎</button>
+              </div>
+              <div class="meta-row">
+                <span>{{ selected.created_at[:10] }}</span>
+                <span>{{ selected.created_at[11:16] }}</span>
+                <span>{{ selected.duration_seconds|round|int }}s</span>
+                <span>{{ languages[selected.language] }} ({{ selected.language }})</span>
+                <span>{{ selected.model }}</span>
+              </div>
+            </div>
+            <div class="actions">
+              <a class="icon-button" href="{{ url_for('download_text', record_id=selected.id) }}" title="Download text">⇩</a>
+              <button class="icon-button" id="copy-button" title="Copy transcript">⧉</button>
+              <button class="icon-button icon-button--danger" id="delete-button" title="Delete transcript">✕</button>
+            </div>
+          </header>
+
+          <section class="tabs">
+            <button class="tab is-active" data-tab-target="transcript-pane">Transcript</button>
+            <button class="tab" data-tab-target="summary-pane">Summary</button>
+            <div class="search-box">
+              <input type="search" id="segment-search" placeholder="Search transcript...">
+            </div>
+          </section>
+
+          <section class="pane is-active" id="transcript-pane">
+            <div class="segment-list" id="segment-list">
+              {% for segment in selected.segments %}
+              <article class="segment" data-segment-id="{{ segment.id }}" data-start="{{ segment.start }}" data-end="{{ segment.end }}" data-text="{{ segment.text|lower }}">
+                <button class="segment-play" data-start="{{ segment.start }}">▶</button>
+                <div class="segment-time">{{ segment.start_label }}</div>
+                <p>{{ segment.text }}</p>
+              </article>
+              {% endfor %}
+              {% if not selected.segments %}
+              <article class="segment">
+                <div class="segment-time">00:00</div>
+                <p>{{ selected.transcript_text }}</p>
+              </article>
+              {% endif %}
+            </div>
+          </section>
+
+          <section class="pane" id="summary-pane">
+            <div class="summary-list">
+              <div class="summary-toolbar">
+                <span class="summary-provider" id="summary-provider-label">Generated with: {{ summary_providers.get(selected.summary_provider, selected.summary_provider) }}</span>
+                <button class="secondary-action" type="button" id="refresh-summary-button">Refresh summary</button>
+              </div>
+              <div id="summary-cards">
+              {% for item in selected.summary %}
+              <article class="summary-card">{{ item }}</article>
+              {% endfor %}
+              </div>
+            </div>
+          </section>
+
+          <footer class="player-bar">
+            <div class="player-main">
+              <div class="player-left">
+                <button class="player-button" id="player-toggle">▶</button>
+                <span class="time-pill" id="current-time">00:00</span>
+              </div>
+              <div class="player-center">
+                <div class="waveform" aria-hidden="true">
+                  {% for i in range(56) %}
+                  <span style="height: {{ 14 + ((i * 11) % 28) }}px"></span>
+                  {% endfor %}
+                </div>
+                <input
+                  type="range"
+                  id="audio-progress"
+                  min="0"
+                  max="{{ selected.duration_seconds if selected.duration_seconds else 0 }}"
+                  step="0.1"
+                  value="0"
+                  aria-label="Audio progress"
+                >
+              </div>
+              <div class="player-right">
+                <span class="time-pill time-pill--muted" id="duration-time">{{ selected.duration_seconds|round|int if selected.duration_seconds else 0 }}s</span>
+              </div>
+            </div>
+            <audio id="audio-player" preload="metadata" src="{{ url_for('audio_file', filename=selected.stored_filename) }}"></audio>
+          </footer>
+          {% else %}
+          <div class="detail-empty">
+            <h2>No transcript selected</h2>
+            <p>Upload an audio file on the left to get started.</p>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+    </main>
+  </div>
+
+  {% if selected %}
+  <script>
+    window.APP_STATE = {
+      recordId: {{ selected.id|tojson }},
+      transcriptText: {{ selected.transcript_text|tojson }},
+      settings: {{ settings|tojson }},
+      language: {{ selected.language|tojson }}
+    };
+  </script>
+  {% endif %}
+  <div class="modal-backdrop" id="confirm-modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
+      <div class="modal-copy">
+        <h3 id="confirm-modal-title">Delete transcription?</h3>
+        <p id="confirm-modal-message">This action will remove the saved transcript and audio file.</p>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-action" type="button" id="confirm-modal-cancel">Cancel</button>
+        <button class="danger-action" type="button" id="confirm-modal-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

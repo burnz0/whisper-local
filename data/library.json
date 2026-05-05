@@ -1,0 +1,697 @@
+[
+  {
+    "id": "f1d97a4fa240",
+    "title": "sofort Kuss zurückgibt bisschen",
+    "title_source": "auto",
+    "filename": "2026-05-04 23.19.30.ogg",
+    "stored_filename": "f1d97a4fa240.ogg",
+    "transcript_filename": "f1d97a4fa240.txt",
+    "created_at": "2026-05-05T18:41:47",
+    "model": "base",
+    "language": "de",
+    "duration_seconds": 13.200000000000001,
+    "transcript_text": "Und hast du das nicht gemerkt, dass du oftmals schreibst, wo bleibt mein Kuss? Wo ist der Kuss? Wenn es nicht sofort einen Kuss mal zurückgibt, ja, das ist schon ein bisschen potzig.",
+    "summary": [
+      "Wenn es nicht sofort einen Kuss mal zurückgibt, ja, das ist schon ein bisschen potzig."
+    ],
+    "summary_provider": "extractive",
+    "segments": [
+      {
+        "id": 0,
+        "start": 0.0,
+        "end": 5.24,
+        "start_label": "00:00",
+        "end_label": "00:05",
+        "text": "Und hast du das nicht gemerkt, dass du oftmals schreibst, wo bleibt mein Kuss?"
+      },
+      {
+        "id": 1,
+        "start": 5.24,
+        "end": 7.24,
+        "start_label": "00:05",
+        "end_label": "00:07",
+        "text": "Wo ist der Kuss?"
+      },
+      {
+        "id": 2,
+        "start": 7.24,
+        "end": 13.200000000000001,
+        "start_label": "00:07",
+        "end_label": "00:13",
+        "text": "Wenn es nicht sofort einen Kuss mal zurückgibt, ja, das ist schon ein bisschen potzig."
+      }
+    ]
+  },
+  {
+    "id": "371cce0993e3",
+    "title": "soll dich darstellt dich",
+    "title_source": "auto",
+    "filename": "2026-05-04 23.19.26.ogg",
+    "stored_filename": "371cce0993e3.ogg",
+    "transcript_filename": "371cce0993e3.txt",
+    "created_at": "2026-05-05T00:58:01",
+    "model": "base",
+    "language": "de",
+    "duration_seconds": 51.9,
+    "transcript_text": "Und mir wär's total wichtig, wenn du dann nicht so in dieser Opferposition gehst. Oh, ich hab eine nette Gemeinde gehstet gemacht und ich bin verständnisvoll. Oh, jetzt ist irgendwie alles pflöd und falsch, was ich sage, Alex, das will ich nicht. Das soll dich so darstellt und so hab ich dich auch nicht dargestellt, das möchte auch sagen. Ich hab dich nicht so dargestellt. Ich danke dir, dass du mir das Angebot machst. Es war jedoch nicht möglich, also nötig, weil ich das ja auch selber entscheiden kann. Meist du, was ich möchte und das tue ich ja auch, das tue ich ja auch im Umgang mit dir. Und gleichzeitig kann man auch so fragen, warum bittest du mir das denn an? Also hast du festgestellt, dass du viel Raum einnimmst oder einfordst.",
+    "summary": [
+      "Das soll dich so darstellt und so hab ich dich auch nicht dargestellt, das möchte auch sagen."
+    ],
+    "summary_provider": "extractive",
+    "segments": [
+      {
+        "id": 0,
+        "start": 0.0,
+        "end": 5.0,
+        "start_label": "00:00",
+        "end_label": "00:05",
+        "text": "Und mir wär's total wichtig, wenn du dann nicht so in dieser Opferposition gehst."
+      },
+      {
+        "id": 1,
+        "start": 5.0,
+        "end": 9.6,
+        "start_label": "00:05",
+        "end_label": "00:09",
+        "text": "Oh, ich hab eine nette Gemeinde gehstet gemacht und ich bin verständnisvoll."
+      },
+      {
+        "id": 2,
+        "start": 9.6,
+        "end": 15.200000000000001,
+        "start_label": "00:09",
+        "end_label": "00:15",
+        "text": "Oh, jetzt ist irgendwie alles pflöd und falsch, was ich sage, Alex, das will ich nicht."
+      },
+      {
+        "id": 3,
+        "start": 15.200000000000001,
+        "end": 19.6,
+        "start_label": "00:15",
+        "end_label": "00:19",
+        "text": "Das soll dich so darstellt und so hab ich dich auch nicht dargestellt, das möchte auch sagen."
+      },
+      {
+        "id": 4,
+        "start": 19.6,
+        "end": 21.2,
+        "start_label": "00:19",
+        "end_label": "00:21",
+        "text": "Ich hab dich nicht so dargestellt."
+      },
+      {
+        "id": 5,
+        "start": 21.2,
+        "end": 23.400000000000002,
+        "start_label": "00:21",
+        "end_label": "00:23",
+        "text": "Ich danke dir, dass du mir das Angebot machst."
+      },
+      {
+        "id": 6,
+        "start": 23.400000000000002,
+        "end": 29.900000000000002,
+        "start_label": "00:23",
+        "end_label": "00:29",
+        "text": "Es war jedoch nicht möglich, also nötig, weil ich das ja auch selber entscheiden kann."
+      },
+      {
+        "id": 7,
+        "start": 29.9,
+        "end": 36.1,
+        "start_label": "00:29",
+        "end_label": "00:36",
+        "text": "Meist du, was ich möchte und das tue ich ja auch, das tue ich ja auch im Umgang mit dir."
+      },
+      {
+        "id": 8,
+        "start": 36.1,
+        "end": 46.9,
+        "start_label": "00:36",
+        "end_label": "00:46",
+        "text": "Und gleichzeitig kann man auch so fragen, warum bittest du mir das denn an?"
+      },
+      {
+        "id": 9,
+        "start": 46.9,
+        "end": 51.9,
+        "start_label": "00:46",
+        "end_label": "00:51",
+        "text": "Also hast du festgestellt, dass du viel Raum einnimmst oder einfordst."
+      }
+    ]
+  },
+  {
+    "id": "a7d5fc888406",
+    "title": "Du bist toll, du bist total klug, du bist gebildet, du bist im Beruf",
+    "title_source": "auto",
+    "filename": "2026-05-04 23.19.34.ogg",
+    "stored_filename": "a7d5fc888406.ogg",
+    "transcript_filename": "a7d5fc888406.txt",
+    "created_at": "2026-05-05T00:54:26",
+    "model": "base",
+    "language": "de",
+    "duration_seconds": 203.35999999999999,
+    "transcript_text": "Also ich halte das jetzt mal hier fest auf dieser Plattform, auf diesem Medium, aber es ist ein endgerätig, ich wüsste es nicht. Ein für alle mal, ja. Du bist toll, du bist total klug, du bist gebildet, du bist im Beruf total erfolgreich und sehr arbeitsamt, du bist vor allem Zielstrebig, du bist tringend, du bist sehr sozial, du bist im Leben, du siehst gut aus, du bist groß, du bist ein tollen Körper, ich find's toll, du so ein guten Freundeskreis hast, dass du umdriebig bist, dass du rausgehst, dass du dir Sachen gönst und auch Sachen nicht gönst, dass du am Leben teilnimmst, dass du Kultur mitnimmst, also im Form von Konzertenparties, tätig mal mit dazu, Partykultur, Festival zum Co, dass du absolut zuverlässig bist, also ich weiß, wenn was ist, du wirst sofort da, das schätze ich sehr an dir, du hast ein gutes Ordnungssystem, so für dich, du bist reflektiert, ich find's toll, dass Sachen bei dir nachhallen, dass ich die Möglichkeit habe, so wie jetzt dir Sachen zu sagen, ja und ich wünsche mir, dass du mir die nicht grumm nimmst, sondern dass die einfach teile von dieser Verbindung sind, weißt du, dass man Vorstellungen, Meinungen abklärft, Dinge im Verständnis, Dinge in vorgehen, gehen es weise, die halt sehr unterschiedlich sind, wir sind halt sehr verschieden auch du und ich und da gehört es dann halt zu, zu fragen, was bedeuteten das in Deiner Welt? Weil's da, das ist halt, das ist halt Kommunikation, es ist halt wichtig, irgendwie sich darüber klarzuwerten in so eine Verbindung zwischen zwei Menschen so okay, was bedeutet das für ihn in seiner Welt? So, warum fragt er das? Ja und das, das frage ich nicht um, um dich irgendwie schlecht zu machen, die schlecht dazustellen, ich möchte es gern verstehen, so warum du zum Beispiel bei einer Nicht-Antwort, warum das dann deinem Kopf gleich so abgeht, das Feuerwerk, ja okay, dann lehnt sie das ab oder es ist eine Zustimmung oder sie schwenkt gleich um, also das ist mir total wichtig, es interessiert mich, weil das gehört dir auch zu deinem Geburtenssein, warum passiert das mit dir und warum klappern dir hier eigentlich die Tassen so? Weil's du Alex, das möchte ich dir gerne mal mitgeben, so, ich bin an dir interessiert mit allem, so wie du sprichst, wie du denkst, was da bei dir abgeht, so und ich meine es gut mit dir, ja ich bin nicht dein Feind, jetzt habe ich das mal hier festgehalten, ich hoffe es funktioniert jetzt mit dem Abschiegen.",
+    "summary": [
+      "Du bist toll, du bist total klug, du bist gebildet, du bist im Beruf total erfolgreich und sehr arbeitsamt, du bist vor allem Zielstrebig, du bist tringend, du bist sehr sozial, du bist im Leben, du siehst gut aus, du bist groß, du bist ein tollen Körper, ich find's toll, du so ein guten Freundeskreis hast, dass du umdriebig bist, dass du rausgehst, dass du dir Sachen gönst und auch Sachen nicht gönst, dass du am."
+    ],
+    "summary_provider": "extractive",
+    "segments": [
+      {
+        "id": 0,
+        "start": 0.0,
+        "end": 8.16,
+        "start_label": "00:00",
+        "end_label": "00:08",
+        "text": "Also ich halte das jetzt mal hier fest auf dieser Plattform, auf diesem Medium,"
+      },
+      {
+        "id": 1,
+        "start": 8.16,
+        "end": 13.52,
+        "start_label": "00:08",
+        "end_label": "00:13",
+        "text": "aber es ist ein endgerätig, ich wüsste es nicht. Ein für alle mal, ja."
+      },
+      {
+        "id": 2,
+        "start": 13.52,
+        "end": 25.76,
+        "start_label": "00:13",
+        "end_label": "00:25",
+        "text": "Du bist toll, du bist total klug, du bist gebildet, du bist im Beruf total erfolgreich und sehr"
+      },
+      {
+        "id": 3,
+        "start": 25.76,
+        "end": 36.04,
+        "start_label": "00:25",
+        "end_label": "00:36",
+        "text": "arbeitsamt, du bist vor allem Zielstrebig, du bist tringend,"
+      },
+      {
+        "id": 4,
+        "start": 36.04,
+        "end": 47.56,
+        "start_label": "00:36",
+        "end_label": "00:47",
+        "text": "du bist sehr sozial, du bist im Leben, du siehst gut aus, du bist groß, du bist ein tollen Körper,"
+      },
+      {
+        "id": 5,
+        "start": 48.160000000000004,
+        "end": 55.6,
+        "start_label": "00:48",
+        "end_label": "00:55",
+        "text": "ich find's toll, du so ein guten Freundeskreis hast, dass du umdriebig bist, dass du rausgehst, dass du"
+      },
+      {
+        "id": 6,
+        "start": 55.6,
+        "end": 68.16,
+        "start_label": "00:55",
+        "end_label": "01:08",
+        "text": "dir Sachen gönst und auch Sachen nicht gönst, dass du am Leben teilnimmst, dass du Kultur mitnimmst,"
+      },
+      {
+        "id": 7,
+        "start": 68.16,
+        "end": 76.80000000000001,
+        "start_label": "01:08",
+        "end_label": "01:16",
+        "text": "also im Form von Konzertenparties, tätig mal mit dazu, Partykultur, Festival zum Co, dass du"
+      },
+      {
+        "id": 8,
+        "start": 76.8,
+        "end": 86.03999999999999,
+        "start_label": "01:16",
+        "end_label": "01:26",
+        "text": "absolut zuverlässig bist, also ich weiß, wenn was ist, du wirst sofort da, das schätze ich sehr an dir,"
+      },
+      {
+        "id": 9,
+        "start": 86.03999999999999,
+        "end": 97.03999999999999,
+        "start_label": "01:26",
+        "end_label": "01:37",
+        "text": "du hast ein gutes Ordnungssystem, so für dich, du bist reflektiert, ich find's toll, dass"
+      },
+      {
+        "id": 10,
+        "start": 97.04,
+        "end": 103.76,
+        "start_label": "01:37",
+        "end_label": "01:43",
+        "text": "Sachen bei dir nachhallen, dass ich die Möglichkeit habe, so wie jetzt dir Sachen zu sagen,"
+      },
+      {
+        "id": 11,
+        "start": 103.76,
+        "end": 111.68,
+        "start_label": "01:43",
+        "end_label": "01:51",
+        "text": "ja und ich wünsche mir, dass du mir die nicht grumm nimmst, sondern dass die einfach teile von"
+      },
+      {
+        "id": 12,
+        "start": 111.68,
+        "end": 119.52000000000001,
+        "start_label": "01:51",
+        "end_label": "01:59",
+        "text": "dieser Verbindung sind, weißt du, dass man Vorstellungen, Meinungen abklärft, Dinge im"
+      },
+      {
+        "id": 13,
+        "start": 119.52,
+        "end": 125.56,
+        "start_label": "01:59",
+        "end_label": "02:05",
+        "text": "Verständnis, Dinge in vorgehen, gehen es weise, die halt sehr unterschiedlich sind, wir sind halt"
+      },
+      {
+        "id": 14,
+        "start": 125.56,
+        "end": 132.68,
+        "start_label": "02:05",
+        "end_label": "02:12",
+        "text": "sehr verschieden auch du und ich und da gehört es dann halt zu, zu fragen, was bedeuteten das in"
+      },
+      {
+        "id": 15,
+        "start": 132.68,
+        "end": 140.0,
+        "start_label": "02:12",
+        "end_label": "02:20",
+        "text": "Deiner Welt? Weil's da, das ist halt, das ist halt Kommunikation, es ist halt wichtig, irgendwie sich"
+      },
+      {
+        "id": 16,
+        "start": 140.0,
+        "end": 147.0,
+        "start_label": "02:20",
+        "end_label": "02:27",
+        "text": "darüber klarzuwerten in so eine Verbindung zwischen zwei Menschen so okay, was bedeutet das für"
+      },
+      {
+        "id": 17,
+        "start": 147.0,
+        "end": 152.52,
+        "start_label": "02:27",
+        "end_label": "02:32",
+        "text": "ihn in seiner Welt? So, warum fragt er das? Ja und das, das frage ich nicht um, um dich irgendwie schlecht"
+      },
+      {
+        "id": 18,
+        "start": 152.52,
+        "end": 159.16,
+        "start_label": "02:32",
+        "end_label": "02:39",
+        "text": "zu machen, die schlecht dazustellen, ich möchte es gern verstehen, so warum du zum Beispiel bei einer"
+      },
+      {
+        "id": 19,
+        "start": 159.16,
+        "end": 166.92000000000002,
+        "start_label": "02:39",
+        "end_label": "02:46",
+        "text": "Nicht-Antwort, warum das dann deinem Kopf gleich so abgeht, das Feuerwerk, ja okay, dann lehnt"
+      },
+      {
+        "id": 20,
+        "start": 166.92000000000002,
+        "end": 175.24,
+        "start_label": "02:46",
+        "end_label": "02:55",
+        "text": "sie das ab oder es ist eine Zustimmung oder sie schwenkt gleich um, also das ist mir total wichtig,"
+      },
+      {
+        "id": 21,
+        "start": 175.24,
+        "end": 179.64000000000001,
+        "start_label": "02:55",
+        "end_label": "02:59",
+        "text": "es interessiert mich, weil das gehört dir auch zu deinem Geburtenssein, warum passiert das mit dir"
+      },
+      {
+        "id": 22,
+        "start": 179.64000000000001,
+        "end": 184.24,
+        "start_label": "02:59",
+        "end_label": "03:04",
+        "text": "und warum klappern dir hier eigentlich die Tassen so? Weil's du Alex, das möchte ich dir gerne mal"
+      },
+      {
+        "id": 23,
+        "start": 184.24,
+        "end": 192.0,
+        "start_label": "03:04",
+        "end_label": "03:12",
+        "text": "mitgeben, so, ich bin an dir interessiert mit allem, so wie du sprichst, wie du denkst, was da bei dir"
+      },
+      {
+        "id": 24,
+        "start": 192.0,
+        "end": 200.64000000000001,
+        "start_label": "03:12",
+        "end_label": "03:20",
+        "text": "abgeht, so und ich meine es gut mit dir, ja ich bin nicht dein Feind, jetzt habe ich das mal hier festgehalten,"
+      },
+      {
+        "id": 25,
+        "start": 200.64,
+        "end": 203.35999999999999,
+        "start_label": "03:20",
+        "end_label": "03:23",
+        "text": "ich hoffe es funktioniert jetzt mit dem Abschiegen."
+      }
+    ]
+  },
+  {
+    "id": "9ce105499aac",
+    "title": "Das soll dich so darstellt und so hab ich dich auch nicht dargestellt",
+    "title_source": "auto",
+    "filename": "2026-05-04 23.19.26.ogg",
+    "stored_filename": "9ce105499aac.ogg",
+    "transcript_filename": "9ce105499aac.txt",
+    "created_at": "2026-05-05T00:51:24",
+    "model": "base",
+    "language": "de",
+    "duration_seconds": 51.9,
+    "transcript_text": "Und mir wär's total wichtig, wenn du dann nicht so in dieser Opferposition gehst. Oh, ich hab eine nette Gemeinde gehstet gemacht und ich bin verständnisvoll. Oh, jetzt ist irgendwie alles pflöd und falsch, was ich sage, Alex, das will ich nicht. Das soll dich so darstellt und so hab ich dich auch nicht dargestellt, das möchte auch sagen. Ich hab dich nicht so dargestellt. Ich danke dir, dass du mir das Angebot machst. Es war jedoch nicht möglich, also nötig, weil ich das ja auch selber entscheiden kann. Meist du, was ich möchte und das tue ich ja auch, das tue ich ja auch im Umgang mit dir. Und gleichzeitig kann man auch so fragen, warum bittest du mir das denn an? Also hast du festgestellt, dass du viel Raum einnimmst oder einfordst.",
+    "summary": [
+      "Das soll dich so darstellt und so hab ich dich auch nicht dargestellt, das möchte auch sagen."
+    ],
+    "summary_provider": "extractive",
+    "segments": [
+      {
+        "id": 0,
+        "start": 0.0,
+        "end": 5.0,
+        "start_label": "00:00",
+        "end_label": "00:05",
+        "text": "Und mir wär's total wichtig, wenn du dann nicht so in dieser Opferposition gehst."
+      },
+      {
+        "id": 1,
+        "start": 5.0,
+        "end": 9.6,
+        "start_label": "00:05",
+        "end_label": "00:09",
+        "text": "Oh, ich hab eine nette Gemeinde gehstet gemacht und ich bin verständnisvoll."
+      },
+      {
+        "id": 2,
+        "start": 9.6,
+        "end": 15.200000000000001,
+        "start_label": "00:09",
+        "end_label": "00:15",
+        "text": "Oh, jetzt ist irgendwie alles pflöd und falsch, was ich sage, Alex, das will ich nicht."
+      },
+      {
+        "id": 3,
+        "start": 15.200000000000001,
+        "end": 19.6,
+        "start_label": "00:15",
+        "end_label": "00:19",
+        "text": "Das soll dich so darstellt und so hab ich dich auch nicht dargestellt, das möchte auch sagen."
+      },
+      {
+        "id": 4,
+        "start": 19.6,
+        "end": 21.2,
+        "start_label": "00:19",
+        "end_label": "00:21",
+        "text": "Ich hab dich nicht so dargestellt."
+      },
+      {
+        "id": 5,
+        "start": 21.2,
+        "end": 23.400000000000002,
+        "start_label": "00:21",
+        "end_label": "00:23",
+        "text": "Ich danke dir, dass du mir das Angebot machst."
+      },
+      {
+        "id": 6,
+        "start": 23.400000000000002,
+        "end": 29.900000000000002,
+        "start_label": "00:23",
+        "end_label": "00:29",
+        "text": "Es war jedoch nicht möglich, also nötig, weil ich das ja auch selber entscheiden kann."
+      },
+      {
+        "id": 7,
+        "start": 29.9,
+        "end": 36.1,
+        "start_label": "00:29",
+        "end_label": "00:36",
+        "text": "Meist du, was ich möchte und das tue ich ja auch, das tue ich ja auch im Umgang mit dir."
+      },
+      {
+        "id": 8,
+        "start": 36.1,
+        "end": 46.9,
+        "start_label": "00:36",
+        "end_label": "00:46",
+        "text": "Und gleichzeitig kann man auch so fragen, warum bittest du mir das denn an?"
+      },
+      {
+        "id": 9,
+        "start": 46.9,
+        "end": 51.9,
+        "start_label": "00:46",
+        "end_label": "00:51",
+        "text": "Also hast du festgestellt, dass du viel Raum einnimmst oder einfordst."
+      }
+    ]
+  },
+  {
+    "id": "1ae82c41530e",
+    "title": "toll total klug gebildet",
+    "title_source": "auto",
+    "filename": "2026-05-04 23.19.34.ogg",
+    "stored_filename": "1ae82c41530e.ogg",
+    "transcript_filename": "1ae82c41530e.txt",
+    "created_at": "2026-05-05T18:42:02",
+    "model": "base",
+    "language": "de",
+    "duration_seconds": 203.35999999999999,
+    "transcript_text": "Also ich halte das jetzt mal hier fest auf dieser Plattform, auf diesem Medium, aber es ist ein endgerätig, ich wüsste es nicht. Ein für alle mal, ja. Du bist toll, du bist total klug, du bist gebildet, du bist im Beruf total erfolgreich und sehr arbeitsamt, du bist vor allem Zielstrebig, du bist tringend, du bist sehr sozial, du bist im Leben, du siehst gut aus, du bist groß, du bist ein tollen Körper, ich find's toll, du so ein guten Freundeskreis hast, dass du umdriebig bist, dass du rausgehst, dass du dir Sachen gönst und auch Sachen nicht gönst, dass du am Leben teilnimmst, dass du Kultur mitnimmst, also im Form von Konzertenparties, tätig mal mit dazu, Partykultur, Festival zum Co, dass du absolut zuverlässig bist, also ich weiß, wenn was ist, du wirst sofort da, das schätze ich sehr an dir, du hast ein gutes Ordnungssystem, so für dich, du bist reflektiert, ich find's toll, dass Sachen bei dir nachhallen, dass ich die Möglichkeit habe, so wie jetzt dir Sachen zu sagen, ja und ich wünsche mir, dass du mir die nicht grumm nimmst, sondern dass die einfach teile von dieser Verbindung sind, weißt du, dass man Vorstellungen, Meinungen abklärft, Dinge im Verständnis, Dinge in vorgehen, gehen es weise, die halt sehr unterschiedlich sind, wir sind halt sehr verschieden auch du und ich und da gehört es dann halt zu, zu fragen, was bedeuteten das in Deiner Welt? Weil's da, das ist halt, das ist halt Kommunikation, es ist halt wichtig, irgendwie sich darüber klarzuwerten in so eine Verbindung zwischen zwei Menschen so okay, was bedeutet das für ihn in seiner Welt? So, warum fragt er das? Ja und das, das frage ich nicht um, um dich irgendwie schlecht zu machen, die schlecht dazustellen, ich möchte es gern verstehen, so warum du zum Beispiel bei einer Nicht-Antwort, warum das dann deinem Kopf gleich so abgeht, das Feuerwerk, ja okay, dann lehnt sie das ab oder es ist eine Zustimmung oder sie schwenkt gleich um, also das ist mir total wichtig, es interessiert mich, weil das gehört dir auch zu deinem Geburtenssein, warum passiert das mit dir und warum klappern dir hier eigentlich die Tassen so? Weil's du Alex, das möchte ich dir gerne mal mitgeben, so, ich bin an dir interessiert mit allem, so wie du sprichst, wie du denkst, was da bei dir abgeht, so und ich meine es gut mit dir, ja ich bin nicht dein Feind, jetzt habe ich das mal hier festgehalten, ich hoffe es funktioniert jetzt mit dem Abschiegen.",
+    "summary": [
+      "Du bist toll, du bist total klug, du bist gebildet, du bist im Beruf total erfolgreich und sehr arbeitsamt, du bist vor allem Zielstrebig, du bist tringend, du bist sehr sozial, du bist im Leben, du siehst gut aus, du bist groß, du bist ein tollen Körper, ich find's toll, du so ein guten Freundeskreis hast, dass du."
+    ],
+    "summary_provider": "extractive",
+    "segments": [
+      {
+        "id": 0,
+        "start": 0.0,
+        "end": 8.16,
+        "start_label": "00:00",
+        "end_label": "00:08",
+        "text": "Also ich halte das jetzt mal hier fest auf dieser Plattform, auf diesem Medium,"
+      },
+      {
+        "id": 1,
+        "start": 8.16,
+        "end": 13.52,
+        "start_label": "00:08",
+        "end_label": "00:13",
+        "text": "aber es ist ein endgerätig, ich wüsste es nicht. Ein für alle mal, ja."
+      },
+      {
+        "id": 2,
+        "start": 13.52,
+        "end": 25.76,
+        "start_label": "00:13",
+        "end_label": "00:25",
+        "text": "Du bist toll, du bist total klug, du bist gebildet, du bist im Beruf total erfolgreich und sehr"
+      },
+      {
+        "id": 3,
+        "start": 25.76,
+        "end": 36.04,
+        "start_label": "00:25",
+        "end_label": "00:36",
+        "text": "arbeitsamt, du bist vor allem Zielstrebig, du bist tringend,"
+      },
+      {
+        "id": 4,
+        "start": 36.04,
+        "end": 47.56,
+        "start_label": "00:36",
+        "end_label": "00:47",
+        "text": "du bist sehr sozial, du bist im Leben, du siehst gut aus, du bist groß, du bist ein tollen Körper,"
+      },
+      {
+        "id": 5,
+        "start": 48.160000000000004,
+        "end": 55.6,
+        "start_label": "00:48",
+        "end_label": "00:55",
+        "text": "ich find's toll, du so ein guten Freundeskreis hast, dass du umdriebig bist, dass du rausgehst, dass du"
+      },
+      {
+        "id": 6,
+        "start": 55.6,
+        "end": 68.16,
+        "start_label": "00:55",
+        "end_label": "01:08",
+        "text": "dir Sachen gönst und auch Sachen nicht gönst, dass du am Leben teilnimmst, dass du Kultur mitnimmst,"
+      },
+      {
+        "id": 7,
+        "start": 68.16,
+        "end": 76.80000000000001,
+        "start_label": "01:08",
+        "end_label": "01:16",
+        "text": "also im Form von Konzertenparties, tätig mal mit dazu, Partykultur, Festival zum Co, dass du"
+      },
+      {
+        "id": 8,
+        "start": 76.8,
+        "end": 86.03999999999999,
+        "start_label": "01:16",
+        "end_label": "01:26",
+        "text": "absolut zuverlässig bist, also ich weiß, wenn was ist, du wirst sofort da, das schätze ich sehr an dir,"
+      },
+      {
+        "id": 9,
+        "start": 86.03999999999999,
+        "end": 97.03999999999999,
+        "start_label": "01:26",
+        "end_label": "01:37",
+        "text": "du hast ein gutes Ordnungssystem, so für dich, du bist reflektiert, ich find's toll, dass"
+      },
+      {
+        "id": 10,
+        "start": 97.04,
+        "end": 103.76,
+        "start_label": "01:37",
+        "end_label": "01:43",
+        "text": "Sachen bei dir nachhallen, dass ich die Möglichkeit habe, so wie jetzt dir Sachen zu sagen,"
+      },
+      {
+        "id": 11,
+        "start": 103.76,
+        "end": 111.68,
+        "start_label": "01:43",
+        "end_label": "01:51",
+        "text": "ja und ich wünsche mir, dass du mir die nicht grumm nimmst, sondern dass die einfach teile von"
+      },
+      {
+        "id": 12,
+        "start": 111.68,
+        "end": 119.52000000000001,
+        "start_label": "01:51",
+        "end_label": "01:59",
+        "text": "dieser Verbindung sind, weißt du, dass man Vorstellungen, Meinungen abklärft, Dinge im"
+      },
+      {
+        "id": 13,
+        "start": 119.52,
+        "end": 125.56,
+        "start_label": "01:59",
+        "end_label": "02:05",
+        "text": "Verständnis, Dinge in vorgehen, gehen es weise, die halt sehr unterschiedlich sind, wir sind halt"
+      },
+      {
+        "id": 14,
+        "start": 125.56,
+        "end": 132.68,
+        "start_label": "02:05",
+        "end_label": "02:12",
+        "text": "sehr verschieden auch du und ich und da gehört es dann halt zu, zu fragen, was bedeuteten das in"
+      },
+      {
+        "id": 15,
+        "start": 132.68,
+        "end": 140.0,
+        "start_label": "02:12",
+        "end_label": "02:20",
+        "text": "Deiner Welt? Weil's da, das ist halt, das ist halt Kommunikation, es ist halt wichtig, irgendwie sich"
+      },
+      {
+        "id": 16,
+        "start": 140.0,
+        "end": 147.0,
+        "start_label": "02:20",
+        "end_label": "02:27",
+        "text": "darüber klarzuwerten in so eine Verbindung zwischen zwei Menschen so okay, was bedeutet das für"
+      },
+      {
+        "id": 17,
+        "start": 147.0,
+        "end": 152.52,
+        "start_label": "02:27",
+        "end_label": "02:32",
+        "text": "ihn in seiner Welt? So, warum fragt er das? Ja und das, das frage ich nicht um, um dich irgendwie schlecht"
+      },
+      {
+        "id": 18,
+        "start": 152.52,
+        "end": 159.16,
+        "start_label": "02:32",
+        "end_label": "02:39",
+        "text": "zu machen, die schlecht dazustellen, ich möchte es gern verstehen, so warum du zum Beispiel bei einer"
+      },
+      {
+        "id": 19,
+        "start": 159.16,
+        "end": 166.92000000000002,
+        "start_label": "02:39",
+        "end_label": "02:46",
+        "text": "Nicht-Antwort, warum das dann deinem Kopf gleich so abgeht, das Feuerwerk, ja okay, dann lehnt"
+      },
+      {
+        "id": 20,
+        "start": 166.92000000000002,
+        "end": 175.24,
+        "start_label": "02:46",
+        "end_label": "02:55",
+        "text": "sie das ab oder es ist eine Zustimmung oder sie schwenkt gleich um, also das ist mir total wichtig,"
+      },
+      {
+        "id": 21,
+        "start": 175.24,
+        "end": 179.64000000000001,
+        "start_label": "02:55",
+        "end_label": "02:59",
+        "text": "es interessiert mich, weil das gehört dir auch zu deinem Geburtenssein, warum passiert das mit dir"
+      },
+      {
+        "id": 22,
+        "start": 179.64000000000001,
+        "end": 184.24,
+        "start_label": "02:59",
+        "end_label": "03:04",
+        "text": "und warum klappern dir hier eigentlich die Tassen so? Weil's du Alex, das möchte ich dir gerne mal"
+      },
+      {
+        "id": 23,
+        "start": 184.24,
+        "end": 192.0,
+        "start_label": "03:04",
+        "end_label": "03:12",
+        "text": "mitgeben, so, ich bin an dir interessiert mit allem, so wie du sprichst, wie du denkst, was da bei dir"
+      },
+      {
+        "id": 24,
+        "start": 192.0,
+        "end": 200.64000000000001,
+        "start_label": "03:12",
+        "end_label": "03:20",
+        "text": "abgeht, so und ich meine es gut mit dir, ja ich bin nicht dein Feind, jetzt habe ich das mal hier festgehalten,"
+      },
+      {
+        "id": 25,
+        "start": 200.64,
+        "end": 203.35999999999999,
+        "start_label": "03:20",
+        "end_label": "03:23",
+        "text": "ich hoffe es funktioniert jetzt mit dem Abschiegen."
+      }
+    ]
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "default_model": "base",
+  "default_language": "de",
+  "summary_provider": "local_transformer",
+  "summary_sentences": 1,
+  "autoplay_on_seek": true,
+  "confirm_before_delete": true
+}
