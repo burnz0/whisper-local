@@ -603,6 +603,12 @@
 
     if (modalOpen) return;
 
+    if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      setUploadPanelOpen(true);
+      return;
+    }
+
     if (event.key === "Escape" && uploadPanel && !uploadPanel.hidden) {
       event.preventDefault();
       setUploadPanelOpen(false);

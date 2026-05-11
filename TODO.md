@@ -11,7 +11,7 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 
 - [x] Move upload/model controls out of the permanent workspace column.
 - [x] Make transcript review the dominant default workspace.
-- [ ] Add a command-palette or keyboard-accessible quick action for new transcripts.
+- [x] Add a command-palette or keyboard-accessible quick action for new transcripts.
 - [ ] Make the context panel reusable for export, metadata, and model settings.
 
 ## P0 - State Design
