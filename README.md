@@ -56,6 +56,7 @@ Then open `http://127.0.0.1:8765`.
 
 - Uses the existing local Whisper environment at `/Users/burnz0/.transcribe-venv`.
 - Local transcript history and settings live in `data/library.json` and `data/settings.json`; these files are ignored by git.
+- If old local records need metadata backfilled, run `make migrate`.
 - Default language is German.
 - Supported models: `tiny`, `base`, `small`.
 - Supported file types: `.ogg`, `.mp3`, `.m4a`, `.wav`, `.mp4`, `.mpeg`, `.webm`, `.aac`, `.flac`.

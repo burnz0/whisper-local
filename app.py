@@ -111,6 +111,32 @@ def ensure_dirs() -> None:
         SETTINGS_PATH.write_text(json.dumps(DEFAULT_SETTINGS, indent=2) + "\n", encoding="utf-8")
 
 
+def backup_invalid_json(path: Path) -> Path:
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup_path = path.with_name(f"{path.stem}.corrupt-{timestamp}{path.suffix}")
+    path.replace(backup_path)
+    return backup_path
+
+
+def load_json_file(path: Path, default_value, expected_type: type):
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        backup_invalid_json(path)
+        path.write_text(json.dumps(default_value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return default_value
+    except OSError:
+        path.write_text(json.dumps(default_value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return default_value
+
+    if not isinstance(payload, expected_type):
+        backup_invalid_json(path)
+        path.write_text(json.dumps(default_value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return default_value
+
+    return payload
+
+
 def get_model(name: str) -> whisper.Whisper:
     if name not in MODELS:
         raise ValueError(f"Unsupported model: {name}")
@@ -228,7 +254,7 @@ def format_duration(seconds: float) -> str:
 
 def load_settings() -> dict:
     ensure_dirs()
-    raw = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    raw = load_json_file(SETTINGS_PATH, DEFAULT_SETTINGS, dict)
     return normalize_settings(raw)
 
 
@@ -495,35 +521,92 @@ def transcribe_file(file_path: Path, model_name: str, language: str) -> tuple[st
 
 def load_library() -> list[TranscriptRecord]:
     ensure_dirs()
-    settings = load_settings()
-    raw = json.loads(LIBRARY_PATH.read_text(encoding="utf-8"))
+    raw = load_json_file(LIBRARY_PATH, [], list)
     records = []
-    library_changed = False
     for item in raw:
-        transcript_text = str(item.get("transcript_text", ""))
-        stored_provider = str(item.get("summary_provider", ""))
-        stored_summary = item.get("summary") or []
-        item["title_source"] = str(item.get("title_source", "manual"))
-        if not stored_provider or not stored_summary:
-            summary, used_provider = generate_summary(transcript_text, str(item.get("language", DEFAULT_LANGUAGE)), settings)
-            item["summary"] = summary
-            item["summary_provider"] = used_provider
-            if item["title_source"] == "auto":
-                item["title"] = generate_title_from_summary(summary, Path(str(item.get("filename", ""))).stem)
-            library_changed = True
-        else:
-            item["summary"] = stored_summary
-            item["summary_provider"] = stored_provider
-        records.append(TranscriptRecord(**item))
-    if library_changed:
-        save_library(records)
+        if not isinstance(item, dict):
+            continue
+        records.append(record_from_payload(item))
     return sorted(records, key=lambda item: item.created_at, reverse=True)
+
+
+def migrate_library() -> int:
+    ensure_dirs()
+    settings = load_settings()
+    raw = load_json_file(LIBRARY_PATH, [], list)
+    migrated = []
+    changed_count = 0
+
+    for item in raw:
+        if not isinstance(item, dict):
+            changed_count += 1
+            continue
+
+        next_item = dict(item)
+        transcript_text = str(next_item.get("transcript_text", ""))
+        stored_summary = next_item.get("summary")
+        stored_provider = str(next_item.get("summary_provider", ""))
+        if not isinstance(stored_summary, list) or not stored_summary or not stored_provider:
+            summary, used_provider = generate_summary(
+                transcript_text,
+                str(next_item.get("language", DEFAULT_LANGUAGE)),
+                settings,
+            )
+            next_item["summary"] = summary
+            next_item["summary_provider"] = used_provider
+            if str(next_item.get("title_source", "manual")) == "auto":
+                next_item["title"] = generate_title_from_summary(summary, Path(str(next_item.get("filename", ""))).stem)
+            changed_count += 1
+
+        migrated.append(record_from_payload(next_item))
+
+    if changed_count:
+        save_library(migrated)
+
+    return changed_count
 
 
 def save_library(records: list[TranscriptRecord]) -> None:
     ensure_dirs()
     payload = [asdict(record) for record in records]
     LIBRARY_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def coerce_float(value: object, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def record_from_payload(item: dict) -> TranscriptRecord:
+    transcript_text = str(item.get("transcript_text", ""))
+    filename = str(item.get("filename", "upload"))
+    transcript_id = str(item.get("id") or uuid.uuid4().hex[:12])
+    language = str(item.get("language", DEFAULT_LANGUAGE))
+    model = str(item.get("model", DEFAULT_MODEL))
+    segments = item.get("segments") if isinstance(item.get("segments"), list) else []
+    summary = item.get("summary") if isinstance(item.get("summary"), list) else []
+
+    if not summary:
+        summary = paragraphize_summary(sentence_summary(transcript_text), max_chars=320)
+
+    return TranscriptRecord(
+        id=transcript_id,
+        title=slugify_title(str(item.get("title") or Path(filename).stem)),
+        title_source=str(item.get("title_source", "manual")),
+        filename=filename,
+        stored_filename=str(item.get("stored_filename", "")),
+        transcript_filename=str(item.get("transcript_filename") or f"{transcript_id}.txt"),
+        created_at=str(item.get("created_at", "")),
+        model=model if model in MODELS else DEFAULT_MODEL,
+        language=language if language in LANGUAGES else DEFAULT_LANGUAGE,
+        duration_seconds=coerce_float(item.get("duration_seconds")),
+        transcript_text=transcript_text,
+        summary=[str(entry) for entry in summary],
+        summary_provider=str(item.get("summary_provider") or "extractive"),
+        segments=segments,
+    )
 
 
 def get_record(record_id: str) -> TranscriptRecord | None:
@@ -548,6 +631,19 @@ def build_stats(records: list[TranscriptRecord]) -> dict[str, str]:
         "duration": format_duration(total_duration),
         "last_model": records[0].model if records else DEFAULT_MODEL,
     }
+
+
+def friendly_transcription_error(exc: Exception) -> tuple[str, int]:
+    if isinstance(exc, ValueError):
+        return str(exc), 400
+
+    message = str(exc).strip()
+    lowered = message.lower()
+    if isinstance(exc, FileNotFoundError) or "ffmpeg" in lowered:
+        return "FFmpeg is required to read this audio file. Install ffmpeg and try again.", 500
+    if "model" in lowered or "whisper" in lowered:
+        return f"Whisper could not process this file: {message or exc.__class__.__name__}", 500
+    return f"Transcription failed: {message or exc.__class__.__name__}", 500
 
 
 def render_workspace(
@@ -710,6 +806,7 @@ def transcribe_route():
     try:
         record = create_transcript_from_upload(upload, model_name=model_name, language=language)
     except Exception as exc:
+        error, status_code = friendly_transcription_error(exc)
         return (
             render_workspace(
                 records=records,
@@ -717,9 +814,9 @@ def transcribe_route():
                 selected=records[0] if records else None,
                 default_model=default_model,
                 default_language=default_language,
-                error=f"Transcription failed: {exc}",
+                error=error,
             ),
-            500,
+            status_code,
         )
 
     return redirect(url_for("transcript_detail", record_id=record.id))
@@ -823,7 +920,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Local audio transcription web app.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--migrate-library", action="store_true", help="Backfill missing local library metadata and exit.")
     args = parser.parse_args()
+
+    if args.migrate_library:
+        changed_count = migrate_library()
+        print(f"Migrated {changed_count} local library record(s).")
+        return
 
     print(f"Open http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False)
