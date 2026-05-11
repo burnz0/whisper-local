@@ -327,16 +327,17 @@
               </div>
               <div class="player-center">
                 <div class="waveform" id="waveform" aria-label="Transcript timing waveform">
-                  {% if selected.segments %}
-                  {% for segment in selected.segments %}
-                  {% set segment_duration = (segment.end|float) - (segment.start|float) %}
+                  {% if selected.duration_seconds %}
+                  {% for i in range(72) %}
+                  {% set wave_start = (selected.duration_seconds|float) * i / 72 %}
+                  {% set wave_end = (selected.duration_seconds|float) * (i + 1) / 72 %}
                   <button
                     type="button"
                     class="waveform-segment"
-                    data-wave-start="{{ segment.start }}"
-                    data-wave-end="{{ segment.end }}"
-                    aria-label="Seek to {{ segment.start_label }}"
-                    style="--wave-grow: {{ '%.2f'|format(segment_duration if segment_duration > 0 else 0.2) }}; --wave-height: {{ 14 + (((segment.text|length) + loop.index * 7) % 28) }}px"
+                    data-wave-start="{{ '%.2f'|format(wave_start) }}"
+                    data-wave-end="{{ '%.2f'|format(wave_end) }}"
+                    aria-label="Seek to {{ '%.0f'|format(wave_start) }} seconds"
+                    style="--wave-height: {{ 11 + ((i * 13 + i // 3 * 7) % 30) }}px"
                   ></button>
                   {% endfor %}
                   {% else %}

@@ -271,6 +271,7 @@
     waveformSegments.forEach((bar) => {
       const start = Number(bar.dataset.waveStart || 0);
       const end = Number(bar.dataset.waveEnd || 0);
+      bar.classList.toggle("is-played", end <= timeSeconds);
       bar.classList.toggle("is-active", timeSeconds >= start && timeSeconds < end);
     });
     segmentRows.forEach((row) => {
