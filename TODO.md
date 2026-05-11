@@ -1,68 +1,49 @@
 # TODO
 
-Prioritized backlog from the expert UX/product review. Product direction: a calm, local-first workspace for turning conversations into searchable knowledge.
+Fresh technical backlog from the May 2026 stack review. Product direction remains a calm, local-first workspace for turning conversations into searchable knowledge.
 
 ## Current Scope Notes
 
 - Desktop browser layouts are the current product target.
 - Mobile layout polish is intentionally deferred; avoid treating mobile-only issues as blockers unless they break desktop/tablet behavior.
+- Keep the app local-first by default. Any cloud-backed option must be explicit, opt-in, and clearly labeled.
 
-## P0 - Layout Hierarchy
+## P0 - Runtime And Dependency Health
 
-- [x] Move upload/model controls out of the permanent workspace column.
-- [x] Make transcript review the dominant default workspace.
-- [x] Add a command-palette or keyboard-accessible quick action for new transcripts.
-- [ ] Make the context panel reusable for export, metadata, and model settings.
+- [ ] Upgrade the local development/runtime target from Python 3.9 to Python 3.11 or 3.12.
+- [ ] Replace the implicit `/Users/burnz0/.transcribe-venv` assumption with documented environment setup.
+- [ ] Pin core runtime dependencies and split optional ML dependencies into explicit extras or install groups.
+- [ ] Add a startup dependency report that distinguishes required, optional, installed, missing, and unsupported components.
+- [ ] Make processing mode labels truthful: only show Metal/CUDA when the active transcription backend actually uses it.
 
-## P0 - State Design
+## P0 - Transcription Backend
 
-- [x] Improve empty state for no transcript selected.
-- [x] Add full-app drag/drop target state for audio ingest.
-- [x] Add visible local-first processing copy during upload/transcription.
-- [x] Design model download state with progress, size, ETA, storage needs, cancel, retry.
-- [x] Design richer transcribing state with active model, CPU/GPU status, progress stages, estimated duration.
-- [x] Design summary generation states: generating, retrying, fallback, failed, local model used.
-- [x] Add specific failure states for missing FFmpeg, CUDA unavailable, corrupted audio, unsupported format, missing model.
+- [ ] Introduce a transcription backend interface so model loading, transcription, timing, and errors are backend-specific.
+- [ ] Keep `openai-whisper` as the baseline backend until replacements are benchmarked.
+- [ ] Benchmark `faster-whisper` for local CPU/GPU performance, memory use, model download size, and transcript quality.
+- [ ] Benchmark `whisper.cpp` for Apple Silicon/CPU performance, quantized models, install friction, and integration cost.
+- [ ] Add `turbo` as an optional Whisper model tier if the selected backend supports it cleanly.
+- [ ] Revisit default model choice after benchmarking `small`, `medium`, and `turbo` on representative German and English audio.
 
-## P1 - Transcript Review
+## P1 - Local Analysis And Summaries
 
-- [x] Keep active segment highlighting and follow playback mode.
-- [x] Add follow-playback toggle.
-- [x] Add current segment emphasis in the player.
-- [x] Add waveform seeking backed by real audio data or transcript timing.
-- [x] Improve segment edit flow beyond browser prompts.
-- [x] Add compact transcript density controls.
+- [ ] Create a local analysis provider interface separate from transcription.
+- [ ] Treat the current German mT5 summarizer as an optional baseline, not the long-term product bet.
+- [ ] Benchmark local instruction models for summaries, action items, entities, and title generation.
+- [ ] Keep extractive summaries as a reliable fallback path.
+- [ ] Add AI extraction for action items and entities once the provider boundary is in place.
 
-## P1 - Search
+## P1 - Search And Knowledge Storage
 
-- [x] Highlight transcript hits and show hit count.
-- [x] Add previous/next hit navigation.
-- [x] Add transcript-only vs summary search scope.
-- [x] Add speaker/tag filters once speaker data exists.
 - [ ] Explore semantic search for local knowledge retrieval.
+- [ ] Choose a local embedding model and storage strategy for transcript segments and notes.
+- [ ] Decide whether semantic search is enough on JSON or whether it should trigger a SQLite migration.
+- [ ] If migrating to SQLite, model transcripts, segments, tags, collections, notes, speakers, summaries, and extracted entities explicitly.
+- [ ] Preserve import/export paths so existing JSON-backed libraries can migrate safely.
 
-## P1 - Local-First Trust
+## P2 - Product Architecture
 
-- [x] Surface "runs locally" and "no cloud upload" in ingest flow.
-- [x] Keep local storage reassurance in persistent sidebar.
-- [x] Show storage path, model location, cache size, disk usage, export path in settings.
-- [x] Add delete local data controls.
-- [x] Show active model and CPU/GPU processing mode during jobs.
-
-## P2 - Design System
-
-- [x] Reduce upload glow dominance by moving ingest to contextual UI.
-- [x] Continue reducing broad glow/gradient usage toward matte, precise surfaces.
-- [x] Standardize spacing on 4/8/12/16/24/32px tokens throughout.
-- [x] Strengthen typography hierarchy for transcript, metadata, timestamps, and controls.
-- [x] Reduce corner-radius uniformity by role.
-- [x] Strengthen hover, selected, playing, focused, and active states.
-
-## P2 - Knowledge Workspace Evolution
-
-- [x] Support persistent transcripts, tags, summary, exports, and segment edits.
-- [x] Add folders or collections.
-- [x] Add bookmarks and highlights.
-- [x] Add linked notes.
-- [x] Add speaker labeling.
-- [ ] Add AI extraction for action items and entities.
+- [ ] Make the context panel reusable for export, metadata, ingest, and model settings.
+- [ ] Add backend/model capability metadata to the UI so unsupported combinations are hidden or clearly disabled.
+- [ ] Add cancellation semantics for queued jobs and document which backends can cancel active transcription.
+- [ ] Add lightweight benchmark fixtures and commands for comparing transcription backends.
