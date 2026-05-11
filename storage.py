@@ -34,6 +34,7 @@ from transcription import transcribe_file
 
 
 logger = logging.getLogger(__name__)
+DEFAULT_COLLECTION = "Inbox"
 
 
 @dataclass
@@ -53,6 +54,7 @@ class TranscriptRecord:
     summary_provider: str
     segments: list[dict]
     tags: list[str]
+    collection: str
 
     @property
     def audio_path(self) -> Path:
@@ -212,6 +214,7 @@ def record_from_payload(item: dict) -> TranscriptRecord:
         summary_provider=str(item.get("summary_provider") or "extractive"),
         segments=segments,
         tags=normalize_tags(tags),
+        collection=normalize_collection(item.get("collection", DEFAULT_COLLECTION)),
     )
 
 
@@ -277,6 +280,7 @@ def create_transcript_from_audio(audio_path: Path, transcript_id: str, source_na
         summary_provider=summary_provider,
         segments=segments,
         tags=[],
+        collection=DEFAULT_COLLECTION,
     )
     persist_record(record)
     return record
@@ -321,6 +325,12 @@ def normalize_tags(tags: list[object] | str) -> list[str]:
     return normalized
 
 
+def normalize_collection(collection: object) -> str:
+    cleaned = " ".join(str(collection or "").strip().split())
+    cleaned = cleaned.strip(" /\\")
+    return cleaned[:48] if cleaned else DEFAULT_COLLECTION
+
+
 def build_transcript_text(segments: list[dict], fallback: str = "") -> str:
     texts = [str(segment.get("text", "")).strip() for segment in segments if str(segment.get("text", "")).strip()]
     return "\n".join(texts) if texts else fallback
@@ -332,6 +342,20 @@ def update_record_tags(record_id: str, tags: list[object] | str) -> TranscriptRe
     for record in records:
         if record.id == record_id:
             record.tags = normalize_tags(tags)
+            updated_record = record
+            break
+    if updated_record is None:
+        return None
+    save_library(records)
+    return updated_record
+
+
+def update_record_collection(record_id: str, collection: object) -> TranscriptRecord | None:
+    records = load_library()
+    updated_record = None
+    for record in records:
+        if record.id == record_id:
+            record.collection = normalize_collection(collection)
             updated_record = record
             break
     if updated_record is None:
@@ -393,6 +417,7 @@ def markdown_export(record: TranscriptRecord) -> str:
     ]
     if record.tags:
         lines.append(f"- Tags: {', '.join(record.tags)}")
+    lines.append(f"- Collection: {record.collection}")
     lines.extend(["", "## Summary", ""])
     lines.extend(record.summary or ["No summary available yet."])
     lines.extend(["", "## Transcript", ""])

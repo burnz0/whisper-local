@@ -279,6 +279,53 @@ textarea:focus-visible {
   font-size: 0.82rem;
 }
 
+.collection-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.collection-filter__button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--radius-control);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  background: rgba(255, 255, 255, 0.024);
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 720;
+  max-width: 100%;
+  padding: 0 9px;
+}
+
+.collection-filter__button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collection-filter__button strong {
+  color: rgba(219, 228, 240, 0.72);
+  font-size: 0.72rem;
+  font-weight: 780;
+}
+
+.collection-filter__button:hover,
+.collection-filter__button.is-active {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+}
+
+.collection-filter__button.is-active {
+  border-color: rgba(82, 207, 125, 0.2);
+  color: var(--green);
+  box-shadow: inset 0 0 0 1px rgba(82, 207, 125, 0.08);
+}
+
 .sidebar-settings {
   display: grid;
   gap: var(--space-3);
@@ -444,6 +491,21 @@ textarea:focus-visible {
   overflow: hidden;
   color: var(--muted);
   font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-card__collection {
+  width: fit-content;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: rgba(82, 207, 125, 0.08);
+  color: rgba(143, 229, 172, 0.9);
+  font-size: 0.72rem;
+  font-weight: 760;
+  line-height: 1.3;
+  padding: 2px 7px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -764,20 +826,30 @@ input[type="text"]:focus,
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.tag-editor {
+.metadata-editors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+
+.metadata-editor {
   display: grid;
   grid-template-columns: auto minmax(160px, 280px) auto;
   gap: var(--space-1);
   align-items: center;
-  margin-top: var(--space-1);
 }
 
-.tag-editor label {
+.metadata-editor--tags {
+  grid-template-columns: auto minmax(190px, 320px) auto;
+}
+
+.metadata-editor label {
   color: var(--muted);
   font-size: 0.82rem;
 }
 
-.tag-editor input {
+.metadata-editor input {
   width: 100%;
   min-height: 36px;
   border-radius: var(--radius-card);
@@ -1836,7 +1908,7 @@ body.is-dragging-file .drop-target {
     grid-template-columns: 40px 1fr;
   }
 
-  .tag-editor {
+  .metadata-editor {
     grid-template-columns: 1fr;
   }
 

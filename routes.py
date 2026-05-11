@@ -22,6 +22,7 @@ from storage import (
     save_settings,
     save_upload,
     cleaned_transcript_text,
+    update_record_collection,
     update_record_tags,
     update_segment_flags,
     update_segment_text,
@@ -43,6 +44,14 @@ def build_stats(records) -> dict[str, str]:
         "duration": format_duration(total_duration),
         "last_model": records[0].model if records else "small",
     }
+
+
+def build_collections(records) -> list[dict[str, str]]:
+    counts: dict[str, int] = {}
+    for record in records:
+        counts[record.collection] = counts.get(record.collection, 0) + 1
+    names = sorted(counts, key=lambda name: (name.lower() != "inbox", name.lower()))
+    return [{"name": name, "count": str(counts[name])} for name in names]
 
 
 def format_bytes(size: int) -> str:
@@ -146,6 +155,7 @@ def render_workspace(
         stats=build_stats(records),
         local_info=build_local_info(),
         model_downloads=build_model_download_info(),
+        collections=build_collections(records),
         upload_accept=UPLOAD_ACCEPT,
         settings=settings,
         error=error,
@@ -276,6 +286,14 @@ def register_routes(app) -> None:
         if record is None:
             return jsonify({"ok": False, "error": "Record not found."}), 404
         return jsonify({"ok": True, "tags": record.tags})
+
+    @app.post("/transcripts/<record_id>/collection")
+    def collection_route(record_id: str):
+        payload = request.get_json(silent=True) or {}
+        record = update_record_collection(record_id, payload.get("collection", ""))
+        if record is None:
+            return jsonify({"ok": False, "error": "Record not found."}), 404
+        return jsonify({"ok": True, "collection": record.collection})
 
     @app.post("/transcripts/<record_id>/segments/<int:segment_id>")
     def segment_update_route(record_id: str, segment_id: int):

@@ -153,16 +153,19 @@ class BackendBehaviorTest(unittest.TestCase):
                 storage, "TRANSCRIPT_DIR", transcripts_dir
             ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path):
                 tagged = storage.update_record_tags("abc123", "Idea, idea, Follow Up")
+                collected = storage.update_record_collection("abc123", " Client Calls ")
                 edited = storage.update_segment_text("abc123", 0, "Hallo Welt.")
                 flagged = storage.update_segment_flags("abc123", 0, bookmarked=True, highlighted=True)
                 markdown = storage.markdown_export(flagged)
                 clean_text = storage.cleaned_transcript_text(storage.get_record("abc123"))
 
             self.assertEqual(tagged.tags, ["idea", "follow up"])
+            self.assertEqual(collected.collection, "Client Calls")
             self.assertEqual(edited.transcript_text, "Hallo Welt.")
             self.assertTrue(flagged.segments[0]["bookmarked"])
             self.assertTrue(flagged.segments[0]["highlighted"])
             self.assertIn("# Original", markdown)
+            self.assertIn("- Collection: Client Calls", markdown)
             self.assertIn("bookmarked, highlighted", markdown)
             self.assertNotIn("ähm", clean_text)
 

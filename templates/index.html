@@ -99,13 +99,26 @@
         <header>
           <span>Recent Transcriptions</span>
         </header>
+        <div class="collection-filter" id="collection-filter" aria-label="Collection filter">
+          <button class="collection-filter__button is-active" type="button" data-collection-filter="all" aria-pressed="true">
+            <span>All</span>
+            <strong>{{ records|length }}</strong>
+          </button>
+          {% for collection in collections %}
+          <button class="collection-filter__button" type="button" data-collection-filter="{{ collection.name }}" aria-pressed="false">
+            <span>{{ collection.name }}</span>
+            <strong>{{ collection.count }}</strong>
+          </button>
+          {% endfor %}
+        </div>
         <div class="library-list">
           {% for record in records %}
-          <div class="library-row" data-record-row="{{ record.id }}" title="{{ record.title }}">
+          <div class="library-row" data-record-row="{{ record.id }}" data-collection="{{ record.collection }}" title="{{ record.title }}">
             <a class="library-card {% if selected and selected.id == record.id %}is-active{% endif %}" href="{{ url_for('transcript_detail', record_id=record.id) }}" data-record-link="{{ record.id }}" title="{{ record.title }}">
               <div class="library-card__icon" aria-hidden="true">▶</div>
               <div class="library-card__body">
                 <strong data-record-title="{{ record.id }}">{{ record.title }}</strong>
+                <span class="library-card__collection" data-record-collection-label="{{ record.id }}">{{ record.collection }}</span>
                 <small>{{ record.created_at[11:16] }} • {{ "%.0f"|format(record.duration_seconds) }}s • {{ languages[record.language] }}</small>
               </div>
             </a>
@@ -163,11 +176,23 @@
                 <span>{{ languages[selected.language] }} ({{ selected.language }})</span>
                 <span>{{ selected.model }}</span>
               </div>
-              <form class="tag-editor" id="tag-editor">
-                <label for="tags-input">Tags</label>
-                <input type="text" id="tags-input" value="{{ selected.tags|join(', ') }}" placeholder="meeting, idea, follow-up">
-                <button class="secondary-action" type="submit">Save</button>
-              </form>
+              <div class="metadata-editors">
+                <form class="metadata-editor" id="collection-editor">
+                  <label for="collection-input">Collection</label>
+                  <input type="text" id="collection-input" value="{{ selected.collection }}" list="collection-options" placeholder="Inbox">
+                  <datalist id="collection-options">
+                    {% for collection in collections %}
+                    <option value="{{ collection.name }}"></option>
+                    {% endfor %}
+                  </datalist>
+                  <button class="secondary-action" type="submit">Save</button>
+                </form>
+                <form class="metadata-editor metadata-editor--tags" id="tag-editor">
+                  <label for="tags-input">Tags</label>
+                  <input type="text" id="tags-input" value="{{ selected.tags|join(', ') }}" placeholder="meeting, idea, follow-up">
+                  <button class="secondary-action" type="submit">Save</button>
+                </form>
+              </div>
             </div>
             <div class="actions">
               <a class="icon-button" href="{{ url_for('download_text', record_id=selected.id) }}" title="Download text" aria-label="Download text">

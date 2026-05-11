@@ -61,7 +61,7 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 ## P2 - Knowledge Workspace Evolution
 
 - [x] Support persistent transcripts, tags, summary, exports, and segment edits.
-- [ ] Add folders or collections.
+- [x] Add folders or collections.
 - [x] Add bookmarks and highlights.
 - [ ] Add linked notes.
 - [ ] Add speaker labeling.

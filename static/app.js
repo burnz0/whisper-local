@@ -22,6 +22,9 @@
   const renameButton = document.getElementById("rename-button");
   const deleteButton = document.getElementById("delete-button");
   const deleteLocalDataButton = document.getElementById("delete-local-data-button");
+  const collectionEditor = document.getElementById("collection-editor");
+  const collectionInput = document.getElementById("collection-input");
+  const collectionFilter = document.getElementById("collection-filter");
   const tagEditor = document.getElementById("tag-editor");
   const tagsInput = document.getElementById("tags-input");
   const refreshSummaryButton = document.getElementById("refresh-summary-button");
@@ -61,6 +64,7 @@
   let followPlayback = window.localStorage.getItem("whisperLocal.followPlayback") !== "false";
   let transcriptDensity = window.localStorage.getItem("whisperLocal.transcriptDensity") || "comfortable";
   let searchScope = window.localStorage.getItem("whisperLocal.searchScope") || "transcript";
+  let activeCollectionFilter = window.localStorage.getItem("whisperLocal.collectionFilter") || "all";
   const formatTime = (seconds) => {
     const total = Math.max(0, Math.floor(seconds || 0));
     const mins = Math.floor(total / 60);
@@ -145,6 +149,53 @@
         setSidebarPanel(button.dataset.sidebarTarget);
       });
     });
+  }
+
+  const getCollectionButtons = () => Array.from(document.querySelectorAll("[data-collection-filter]"));
+  const getCollectionRows = () => Array.from(document.querySelectorAll("[data-record-row]"));
+  const setCollectionFilter = (collection) => {
+    const buttons = getCollectionButtons();
+    const hasCollection = collection === "all" || buttons.some((button) => button.dataset.collectionFilter === collection);
+    activeCollectionFilter = hasCollection ? collection : "all";
+    getCollectionRows().forEach((row) => {
+      row.hidden = activeCollectionFilter !== "all" && row.dataset.collection !== activeCollectionFilter;
+    });
+    buttons.forEach((button) => {
+      const isActive = button.dataset.collectionFilter === activeCollectionFilter;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+    window.localStorage.setItem("whisperLocal.collectionFilter", activeCollectionFilter);
+  };
+  const adjustCollectionCount = (collection, delta) => {
+    if (!collection) return;
+    const button = getCollectionButtons().find((item) => item.dataset.collectionFilter === collection);
+    const countEl = button && button.querySelector("strong");
+    if (!countEl) return;
+    const nextCount = Math.max(0, Number(countEl.textContent || 0) + delta);
+    countEl.textContent = String(nextCount);
+  };
+  const ensureCollectionButton = (collection) => {
+    if (!collectionFilter || !collection || getCollectionButtons().some((item) => item.dataset.collectionFilter === collection)) return;
+    const button = document.createElement("button");
+    const label = document.createElement("span");
+    const count = document.createElement("strong");
+    button.className = "collection-filter__button";
+    button.type = "button";
+    button.dataset.collectionFilter = collection;
+    button.setAttribute("aria-pressed", "false");
+    label.textContent = collection;
+    count.textContent = "0";
+    button.append(label, count);
+    button.addEventListener("click", () => setCollectionFilter(collection));
+    collectionFilter.appendChild(button);
+  };
+
+  if (collectionFilter) {
+    getCollectionButtons().forEach((button) => {
+      button.addEventListener("click", () => setCollectionFilter(button.dataset.collectionFilter || "all"));
+    });
+    setCollectionFilter(activeCollectionFilter);
   }
 
   const setActiveTab = (targetId) => {
@@ -624,6 +675,33 @@
         const sidebarTitle = document.querySelector(`[data-record-title="${state.recordId}"]`);
         if (sidebarTitle) sidebarTitle.textContent = payload.title;
       }
+    });
+  }
+
+  if (collectionEditor && collectionInput && state) {
+    collectionEditor.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const response = await fetch(`/transcripts/${state.recordId}/collection`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ collection: collectionInput.value })
+      });
+      const payload = await response.json();
+      if (!payload.ok) return;
+      const nextCollection = payload.collection || "Inbox";
+      const row = document.querySelector(`[data-record-row="${state.recordId}"]`);
+      const previousCollection = row ? row.dataset.collection : "";
+      collectionInput.value = nextCollection;
+      document.querySelectorAll(`[data-record-collection-label="${state.recordId}"]`).forEach((label) => {
+        label.textContent = nextCollection;
+      });
+      if (row) row.dataset.collection = nextCollection;
+      if (previousCollection !== nextCollection) {
+        ensureCollectionButton(nextCollection);
+        adjustCollectionCount(previousCollection, -1);
+        adjustCollectionCount(nextCollection, 1);
+      }
+      setCollectionFilter(activeCollectionFilter);
     });
   }
 
