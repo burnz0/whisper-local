@@ -998,9 +998,46 @@ input[type="search"] {
   flex-wrap: wrap;
 }
 
+.summary-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .summary-provider {
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+.summary-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.summary-state--ready {
+  background: rgba(82, 207, 125, 0.12);
+  color: var(--green);
+}
+
+.summary-state--generating {
+  background: rgba(255, 255, 255, 0.06);
+  color: #c8d2e0;
+}
+
+.summary-state--fallback {
+  background: rgba(214, 167, 76, 0.14);
+  color: #f1c15f;
+}
+
+.summary-state--error {
+  background: rgba(110, 28, 28, 0.28);
+  color: #ffd1d1;
 }
 
 #summary-cards {

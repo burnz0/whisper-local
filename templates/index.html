@@ -215,7 +215,10 @@
           <section class="pane" id="summary-pane">
             <div class="summary-list">
               <div class="summary-toolbar">
-                <span class="summary-provider" id="summary-provider-label">Generated with: {{ summary_providers.get(selected.summary_provider, selected.summary_provider) }}</span>
+                <div class="summary-status">
+                  <span class="summary-provider" id="summary-provider-label">Generated with: {{ summary_providers.get(selected.summary_provider, selected.summary_provider) }}</span>
+                  <span class="summary-state summary-state--ready" id="summary-state" aria-live="polite">Ready</span>
+                </div>
                 <button class="secondary-action" type="button" id="refresh-summary-button">Refresh summary</button>
               </div>
               <div id="summary-cards">

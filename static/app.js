@@ -26,6 +26,7 @@
   const refreshSummaryButton = document.getElementById("refresh-summary-button");
   const summaryCards = document.getElementById("summary-cards");
   const summaryProviderLabel = document.getElementById("summary-provider-label");
+  const summaryState = document.getElementById("summary-state");
   const titleEl = document.getElementById("record-title");
   const jobStatus = document.getElementById("job-status");
   const jobStatusTitle = document.getElementById("job-status-title");
@@ -326,13 +327,13 @@
 
   if (search) {
     const allSegments = Array.from(document.querySelectorAll(".segment"));
-    const allSummaryCards = Array.from(document.querySelectorAll(".summary-card"));
+    const getSummaryCards = () => Array.from(document.querySelectorAll(".summary-card"));
     let searchMatches = [];
     let activeSearchIndex = -1;
     const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const getSearchTextEl = (item) => item.querySelector("p") || item;
-    const getSearchItems = () => (searchScope === "summary" ? allSummaryCards : allSegments);
-    const getInactiveSearchItems = () => (searchScope === "summary" ? allSegments : allSummaryCards);
+    const getSearchItems = () => (searchScope === "summary" ? getSummaryCards() : allSegments);
+    const getInactiveSearchItems = () => (searchScope === "summary" ? allSegments : getSummaryCards());
     const clearHighlight = (item) => {
       const textEl = getSearchTextEl(item);
       if (!textEl || textEl.dataset.originalText === undefined) return;
@@ -340,7 +341,7 @@
     };
     const clearActiveSearchHit = () => {
       allSegments.forEach((segment) => segment.classList.remove("is-search-active"));
-      allSummaryCards.forEach((card) => card.classList.remove("is-search-active"));
+      getSummaryCards().forEach((card) => card.classList.remove("is-search-active"));
     };
     const renderSearchScope = () => {
       searchScope = searchScope === "summary" ? "summary" : "transcript";
@@ -677,9 +678,18 @@
   });
 
   if (refreshSummaryButton && state) {
+    const setSummaryState = (status, message) => {
+      if (!summaryState) return;
+      summaryState.textContent = message;
+      summaryState.className = `summary-state summary-state--${status}`;
+      summaryState.dataset.status = status;
+    };
+
     refreshSummaryButton.addEventListener("click", async () => {
+      const isRetry = summaryState && summaryState.dataset.status === "error";
       refreshSummaryButton.disabled = true;
       refreshSummaryButton.textContent = "Refreshing...";
+      setSummaryState(isRetry ? "generating" : "generating", isRetry ? "Retrying locally" : "Generating locally");
       if (summaryCards) {
         summaryCards.setAttribute("aria-busy", "true");
         summaryCards.innerHTML = '<article class="summary-card summary-card--loading">Refreshing summary...</article>';
@@ -700,6 +710,10 @@
             summaryCards.appendChild(article);
           });
           summaryProviderLabel.textContent = `Generated with: ${summaryProviderNames[payload.provider] || payload.provider}`;
+          setSummaryState(
+            payload.provider === "extractive" ? "fallback" : "ready",
+            payload.provider === "extractive" ? "Fallback summary ready" : "Local model summary ready"
+          );
           if (payload.title && titleEl) {
             titleEl.textContent = payload.title;
             const sidebarTitle = document.querySelector(`[data-record-title="${state.recordId}"]`);
@@ -715,6 +729,7 @@
           article.textContent = error.message || "Summary refresh failed.";
           summaryCards.appendChild(article);
         }
+        setSummaryState("error", "Summary failed");
       } finally {
         if (summaryCards) {
           summaryCards.removeAttribute("aria-busy");

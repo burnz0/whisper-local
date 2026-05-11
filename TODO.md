@@ -21,7 +21,7 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 - [x] Add visible local-first processing copy during upload/transcription.
 - [ ] Design model download state with progress, size, ETA, storage needs, cancel, retry.
 - [ ] Design richer transcribing state with active model, CPU/GPU status, progress stages, estimated duration.
-- [ ] Design summary generation states: generating, retrying, fallback, failed, local model used.
+- [x] Design summary generation states: generating, retrying, fallback, failed, local model used.
 - [ ] Add specific failure states for missing FFmpeg, CUDA unavailable, corrupted audio, unsupported format, missing model.
 
 ## P1 - Transcript Review
