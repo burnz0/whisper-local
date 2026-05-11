@@ -31,6 +31,7 @@
   const jobStatus = document.getElementById("job-status");
   const jobStatusTitle = document.getElementById("job-status-title");
   const jobStatusMessage = document.getElementById("job-status-message");
+  const jobMeta = jobStatus ? jobStatus.querySelector(".job-meta") : null;
   const transcribeForm = document.getElementById("transcribe-form");
   const transcribeButton = document.getElementById("transcribe-button");
   const transcribeStatus = document.getElementById("transcribe-status");
@@ -83,7 +84,19 @@
               ? job.error || "Transcription failed."
               : job.status === "complete"
                 ? "Opening transcript..."
-                : `Running locally with ${job.model}. ${job.source_name} is ${job.status}; no cloud upload occurs.`;
+                : `${job.source_name} is ${job.status}; no cloud upload occurs.`;
+        }
+        if (jobMeta) {
+          jobMeta.innerHTML = "";
+          [
+            `Model: ${job.model}`,
+            `Mode: ${job.processing_mode || "CPU"}`,
+            `Stage: ${job.status}`
+          ].forEach((item) => {
+            const span = document.createElement("span");
+            span.textContent = item;
+            jobMeta.appendChild(span);
+          });
         }
         if (job.status === "complete" && payload.redirect_url) {
           window.location.href = payload.redirect_url;

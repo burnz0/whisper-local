@@ -1365,6 +1365,25 @@ body.is-playing .waveform span:nth-child(4n) {
   color: var(--muted);
 }
 
+.job-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.job-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  background: rgba(82, 207, 125, 0.1);
+  color: #bfe8cc;
+  font-size: 0.78rem;
+  font-weight: 750;
+  padding: 0 10px;
+}
+
 .context-backdrop {
   position: fixed;
   inset: 0;

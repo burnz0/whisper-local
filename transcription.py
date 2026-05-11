@@ -26,6 +26,23 @@ def check_dependencies() -> list[str]:
     return missing
 
 
+def processing_mode_label() -> str:
+    try:
+        import torch
+    except ImportError:  # pragma: no cover
+        return "CPU"
+
+    try:
+        if torch.cuda.is_available():
+            return "GPU (CUDA)"
+        mps = getattr(torch.backends, "mps", None)
+        if mps is not None and mps.is_available():
+            return "GPU (Metal)"
+    except Exception:  # pragma: no cover
+        logger.debug("could not detect torch processing mode", exc_info=True)
+    return "CPU"
+
+
 def get_model(name: str):
     if whisper is None:
         raise RuntimeError("Whisper is not installed for this Python interpreter.")

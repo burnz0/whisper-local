@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from storage import create_transcript_from_audio
+from transcription import processing_mode_label
 
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ class TranscriptionJob:
     source_name: str
     model: str
     language: str
+    processing_mode: str
     record_id: str | None = None
     error: str | None = None
 
@@ -33,6 +35,7 @@ class TranscriptionJob:
             "source_name": self.source_name,
             "model": self.model,
             "language": self.language,
+            "processing_mode": self.processing_mode,
             "record_id": self.record_id,
             "error": self.error,
         }
@@ -45,6 +48,7 @@ def start_transcription_job(audio_path: Path, transcript_id: str, source_name: s
         source_name=source_name,
         model=model_name,
         language=language,
+        processing_mode=processing_mode_label(),
     )
     with _LOCK:
         _JOBS[job.id] = job

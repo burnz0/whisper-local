@@ -132,8 +132,13 @@
           {% if job.status == "failed" %}Transcription failed{% elif job.status == "complete" %}Transcription complete{% else %}Transcribing audio{% endif %}
         </strong>
         <span id="job-status-message">
-          {% if job.status == "failed" %}{{ job.error }}{% elif job.status == "complete" %}Opening transcript...{% else %}Running locally with {{ job.model }}. {{ job.source_name }} is {{ job.status }}; no cloud upload occurs.{% endif %}
+          {% if job.status == "failed" %}{{ job.error }}{% elif job.status == "complete" %}Opening transcript...{% else %}{{ job.source_name }} is {{ job.status }}; no cloud upload occurs.{% endif %}
         </span>
+        <div class="job-meta">
+          <span>Model: {{ job.model }}</span>
+          <span>Mode: {{ job.processing_mode }}</span>
+          <span>Stage: {{ job.status }}</span>
+        </div>
       </div>
       {% endif %}
 
