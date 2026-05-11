@@ -2,6 +2,11 @@
 
 Prioritized backlog from the expert UX/product review. Product direction: a calm, local-first workspace for turning conversations into searchable knowledge.
 
+## Current Scope Notes
+
+- Desktop browser layouts are the current product target.
+- Mobile layout polish is intentionally deferred; avoid treating mobile-only issues as blockers unless they break desktop/tablet behavior.
+
 ## P0 - Layout Hierarchy
 
 - [x] Move upload/model controls out of the permanent workspace column.

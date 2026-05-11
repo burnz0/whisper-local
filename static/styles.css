@@ -85,6 +85,7 @@ body::before {
   border-radius: 0 28px 28px 0;
   border-left: 0;
   padding: 12px;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -553,8 +554,10 @@ input[type="search"] {
 
 .detail-panel {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto 1fr auto;
   height: 100%;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
@@ -565,6 +568,10 @@ input[type="search"] {
   justify-content: space-between;
   gap: 16px;
   align-items: start;
+}
+
+.detail-header > div:first-child {
+  min-width: 0;
 }
 
 .detail-header h2 {
@@ -741,7 +748,7 @@ input[type="search"] {
 
 .segment {
   display: grid;
-  grid-template-columns: 34px 70px 1fr auto;
+  grid-template-columns: 34px 70px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: start;
   padding: 9px 8px;
@@ -822,11 +829,13 @@ input[type="search"] {
 }
 
 .segment p {
+  min-width: 0;
   margin: 0;
   font-size: 0.95rem;
   line-height: 1.5;
   font-weight: 400;
   color: rgba(243, 245, 248, 0.92);
+  overflow-wrap: anywhere;
 }
 
 .segment mark {
@@ -1082,8 +1091,7 @@ body.is-playing .waveform span:nth-child(4n) {
 .context-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(4, 7, 12, 0.54);
-  backdrop-filter: blur(8px);
+  background: rgba(4, 7, 12, 0.24);
   z-index: 35;
 }
 
@@ -1093,16 +1101,18 @@ body.is-playing .waveform span:nth-child(4n) {
 
 .context-panel {
   position: fixed;
-  top: 10px;
-  right: 10px;
-  bottom: 10px;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
   z-index: 40;
-  width: min(420px, calc(100vw - 20px));
+  width: min(390px, calc(100vw - 32px));
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+  grid-template-rows: auto auto;
+  align-content: start;
+  gap: 14px;
   padding: 16px;
-  border-radius: 22px;
+  overflow: auto;
+  border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background: linear-gradient(180deg, rgba(15, 20, 28, 0.98), rgba(9, 13, 19, 0.98));
   box-shadow: 0 28px 90px rgba(0, 0, 0, 0.46);
@@ -1122,6 +1132,10 @@ body.is-playing .waveform span:nth-child(4n) {
 .context-panel__header h2 {
   margin: 2px 0 0;
   font-size: 1.25rem;
+}
+
+.context-panel .upload-card {
+  overflow: visible;
 }
 
 .eyebrow {
@@ -1275,9 +1289,8 @@ body.is-dragging-file .drop-target {
 .drop-target strong {
   font-size: 1.2rem;
 }
-}
 
-@media (max-width: 1180px) {
+@media (max-width: 860px) {
   body {
     overflow: auto;
   }
