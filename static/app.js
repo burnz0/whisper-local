@@ -69,6 +69,29 @@
   };
 
   if (jobState && jobStatus) {
+    const jobStageLabel = (status) => {
+      if (status === "queued") return "Queued";
+      if (status === "running") return "Transcribing";
+      if (status === "complete") return "Complete";
+      if (status === "failed") return "Failed";
+      return status;
+    };
+    const renderJobMeta = (job) => {
+      if (!jobMeta) return;
+      jobMeta.innerHTML = "";
+      [
+        `Model: ${job.model}`,
+        `Mode: ${job.processing_mode || "CPU"}`,
+        `Stage: ${jobStageLabel(job.status)}`,
+        `Elapsed: ${formatTime(job.elapsed_seconds || 0)}`,
+        `Estimate: ${job.estimated_duration || "Local processing time varies"}`,
+        `File: ${job.source_size_label || "Unknown size"}`
+      ].forEach((item) => {
+        const span = document.createElement("span");
+        span.textContent = item;
+        jobMeta.appendChild(span);
+      });
+    };
     const pollJob = async () => {
       try {
         const response = await fetch(`/jobs/${jobState.id}.json`);
@@ -87,18 +110,7 @@
                 ? "Opening transcript..."
                 : `${job.source_name} is ${job.status}; no cloud upload occurs.`;
         }
-        if (jobMeta) {
-          jobMeta.innerHTML = "";
-          [
-            `Model: ${job.model}`,
-            `Mode: ${job.processing_mode || "CPU"}`,
-            `Stage: ${job.status}`
-          ].forEach((item) => {
-            const span = document.createElement("span");
-            span.textContent = item;
-            jobMeta.appendChild(span);
-          });
-        }
+        renderJobMeta(job);
         if (job.status === "complete" && payload.redirect_url) {
           window.location.href = payload.redirect_url;
           return;

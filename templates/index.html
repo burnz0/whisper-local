@@ -139,6 +139,8 @@
           <span>Model: {{ job.model }}</span>
           <span>Mode: {{ job.processing_mode }}</span>
           <span>Stage: {{ job.status }}</span>
+          <span>Elapsed: {{ job.elapsed_seconds }}s</span>
+          <span>Estimate: {{ job.estimated_duration }}</span>
         </div>
       </div>
       {% endif %}
