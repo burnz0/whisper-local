@@ -11,6 +11,8 @@
   const playerNowTime = document.getElementById("player-now-time");
   const followPlaybackToggle = document.getElementById("follow-playback-toggle");
   const search = document.getElementById("segment-search");
+  const searchPrevious = document.getElementById("segment-search-prev");
+  const searchNext = document.getElementById("segment-search-next");
   const tabs = document.querySelectorAll(".tab");
   const panes = document.querySelectorAll(".pane");
   const copyButton = document.getElementById("copy-button");
@@ -300,11 +302,48 @@
 
   if (search) {
     const allSegments = Array.from(document.querySelectorAll(".segment"));
+    let searchMatches = [];
+    let activeSearchIndex = -1;
     const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const clearHighlight = (segment) => {
       const textEl = segment.querySelector("p");
       if (!textEl || textEl.dataset.originalText === undefined) return;
       textEl.textContent = textEl.dataset.originalText;
+    };
+    const clearActiveSearchHit = () => {
+      allSegments.forEach((segment) => segment.classList.remove("is-search-active"));
+    };
+    const updateSearchControls = () => {
+      const hasMatches = searchMatches.length > 0;
+      if (searchPrevious) searchPrevious.disabled = !hasMatches;
+      if (searchNext) searchNext.disabled = !hasMatches;
+      if (searchCount) {
+        if (!search.value.trim()) {
+          searchCount.textContent = "";
+        } else if (hasMatches) {
+          searchCount.textContent = `${activeSearchIndex + 1} of ${searchMatches.length} matches`;
+        } else {
+          searchCount.textContent = "0 matches";
+        }
+      }
+    };
+    const focusSearchHit = (index) => {
+      if (!searchMatches.length) {
+        activeSearchIndex = -1;
+        clearActiveSearchHit();
+        updateSearchControls();
+        return;
+      }
+      activeSearchIndex = (index + searchMatches.length) % searchMatches.length;
+      clearActiveSearchHit();
+      const segment = searchMatches[activeSearchIndex];
+      segment.classList.add("is-search-active");
+      segment.scrollIntoView({ block: "center", behavior: "smooth" });
+      updateSearchControls();
+    };
+    const moveSearchHit = (delta) => {
+      if (!searchMatches.length) return;
+      focusSearchHit(activeSearchIndex + delta);
     };
     const highlightMatch = (segment, query) => {
       const textEl = segment.querySelector("p");
@@ -332,21 +371,25 @@
     };
     const renderSearch = () => {
       const query = search.value.trim().toLowerCase();
-      let matches = 0;
+      searchMatches = [];
+      clearActiveSearchHit();
       allSegments.forEach((segment) => {
         const textEl = segment.querySelector("p");
         const haystack = (textEl && (textEl.dataset.originalText || textEl.textContent) || segment.textContent).toLowerCase();
         const isMatch = !query || haystack.includes(query);
         segment.hidden = !isMatch;
         if (query && isMatch) {
-          matches += 1;
+          searchMatches.push(segment);
           highlightMatch(segment, query);
         } else {
           clearHighlight(segment);
         }
       });
-      if (searchCount) {
-        searchCount.textContent = query ? `${matches} match${matches === 1 ? "" : "es"}` : "";
+      if (query && searchMatches.length) {
+        focusSearchHit(0);
+      } else {
+        activeSearchIndex = -1;
+        updateSearchControls();
       }
       if (!query) {
         syncActiveSegment(audio ? audio.currentTime : 0);
@@ -354,6 +397,14 @@
     };
 
     search.addEventListener("input", renderSearch);
+    search.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      moveSearchHit(event.shiftKey ? -1 : 1);
+    });
+    if (searchPrevious) searchPrevious.addEventListener("click", () => moveSearchHit(-1));
+    if (searchNext) searchNext.addEventListener("click", () => moveSearchHit(1));
+    updateSearchControls();
   }
 
   const setUploadPanelOpen = (isOpen) => {

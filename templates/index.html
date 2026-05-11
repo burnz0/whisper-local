@@ -174,7 +174,11 @@
             <button class="tab is-active" data-tab-target="transcript-pane">Transcript</button>
             <button class="tab" data-tab-target="summary-pane">Summary</button>
             <div class="search-box">
-              <input type="search" id="segment-search" placeholder="Search transcript...">
+              <div class="search-input-row">
+                <input type="search" id="segment-search" placeholder="Search transcript...">
+                <button class="search-nav-button" type="button" id="segment-search-prev" aria-label="Previous search result" disabled>Prev</button>
+                <button class="search-nav-button" type="button" id="segment-search-next" aria-label="Next search result" disabled>Next</button>
+              </div>
               <small class="search-count" id="segment-search-count" aria-live="polite"></small>
             </div>
           </section>
