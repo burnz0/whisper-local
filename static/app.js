@@ -7,6 +7,8 @@
   const durationTime = document.getElementById("duration-time");
   const progress = document.getElementById("audio-progress");
   const playerNow = document.getElementById("player-now");
+  const playerNowText = document.getElementById("player-now-text");
+  const playerNowTime = document.getElementById("player-now-time");
   const followPlaybackToggle = document.getElementById("follow-playback-toggle");
   const search = document.getElementById("segment-search");
   const tabs = document.querySelectorAll(".tab");
@@ -129,11 +131,16 @@
       row.classList.toggle("is-active", isActive);
       if (isActive) activeRow = row;
     });
-    if (activeRow && playerNow) {
+    if (activeRow && playerNowText) {
       const textEl = activeRow.querySelector("p");
-      playerNow.textContent = textEl ? textEl.textContent.trim() : "";
-    } else if (!activeRow && playerNow && titleEl) {
-      playerNow.textContent = titleEl.textContent || "";
+      const timeEl = activeRow.querySelector(".segment-time");
+      playerNowText.textContent = textEl ? textEl.textContent.trim() : "";
+      if (playerNowTime) playerNowTime.textContent = timeEl ? timeEl.textContent.trim() : "";
+      if (playerNow) playerNow.classList.add("has-segment");
+    } else if (!activeRow && playerNowText && titleEl) {
+      playerNowText.textContent = titleEl.textContent || "";
+      if (playerNowTime) playerNowTime.textContent = "";
+      if (playerNow) playerNow.classList.remove("has-segment");
     }
     const isFiltering = Boolean(search && search.value.trim());
     if (activeRow && activeRow !== lastActiveSegment && followPlayback && !isFiltering) {

@@ -925,14 +925,52 @@ input[type="search"] {
 }
 
 .player-now {
-  flex: 0 1 260px;
-  min-width: 160px;
+  flex: 0 1 300px;
+  min-width: 190px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  align-items: center;
   overflow: hidden;
   color: rgba(243, 245, 248, 0.86);
   font-size: 0.88rem;
   line-height: 1.35;
+}
+
+.player-now__label {
+  grid-column: 1 / -1;
+  color: #63dd90;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.player-now strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.88rem;
+  font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.player-now__time {
+  display: none;
+  min-height: 24px;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(82, 207, 125, 0.13);
+  color: var(--green);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  padding: 0 9px;
+}
+
+.player-now.has-segment .player-now__time {
+  display: inline-flex;
 }
 
 .player-button {
