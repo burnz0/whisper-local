@@ -1609,20 +1609,18 @@ body.is-playing .player-button {
 .waveform {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 2px;
   height: 42px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  padding: 2px 4px;
+  padding: 2px 0;
 }
 
 .waveform span,
 .waveform-segment {
   flex: 1 1 3px;
   min-width: 2px;
-  max-width: 5px;
   height: var(--wave-height, 24px);
   border-radius: var(--radius-pill);
   border: 0;
