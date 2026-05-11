@@ -27,6 +27,9 @@
   const collectionFilter = document.getElementById("collection-filter");
   const tagEditor = document.getElementById("tag-editor");
   const tagsInput = document.getElementById("tags-input");
+  const notesEditor = document.getElementById("notes-editor");
+  const notesInput = document.getElementById("notes-input");
+  const notesStatus = document.getElementById("notes-status");
   const refreshSummaryButton = document.getElementById("refresh-summary-button");
   const summaryCards = document.getElementById("summary-cards");
   const summaryProviderLabel = document.getElementById("summary-provider-label");
@@ -716,6 +719,28 @@
       const payload = await response.json();
       if (payload.ok) {
         tagsInput.value = payload.tags.join(", ");
+      }
+    });
+  }
+
+  if (notesEditor && notesInput && state) {
+    notesEditor.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (notesStatus) notesStatus.textContent = "Saving...";
+      const response = await fetch(`/transcripts/${state.recordId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: notesInput.value })
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        notesInput.value = payload.notes || "";
+        if (notesStatus) notesStatus.textContent = "Saved";
+        window.setTimeout(() => {
+          if (notesStatus && notesStatus.textContent === "Saved") notesStatus.textContent = "";
+        }, 1400);
+      } else if (notesStatus) {
+        notesStatus.textContent = payload.error || "Could not save notes.";
       }
     });
   }

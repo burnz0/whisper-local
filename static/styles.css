@@ -716,9 +716,22 @@ input[type="text"] {
   font: inherit;
 }
 
+textarea {
+  width: 100%;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border);
+  background: #111721;
+  color: var(--text);
+  padding: 12px 14px;
+  font: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
 select:hover,
 input[type="search"]:hover,
 input[type="text"]:hover,
+textarea:hover,
 .segment-editor textarea:hover {
   border-color: rgba(255, 255, 255, 0.1);
 }
@@ -726,6 +739,7 @@ input[type="text"]:hover,
 select:focus,
 input[type="search"]:focus,
 input[type="text"]:focus,
+textarea:focus,
 .segment-editor textarea:focus {
   border-color: rgba(82, 207, 125, 0.34);
   box-shadow: 0 0 0 3px rgba(82, 207, 125, 0.1);
@@ -1353,6 +1367,37 @@ input[type="text"]:focus,
   border-color: rgba(82, 207, 125, 0.18);
   background: rgba(82, 207, 125, 0.08);
   box-shadow: inset 3px 0 0 rgba(82, 207, 125, 0.82);
+}
+
+.notes-panel {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.notes-panel label {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 760;
+}
+
+.notes-panel textarea {
+  min-height: 260px;
+  resize: none;
+}
+
+.notes-panel__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.notes-panel__actions span {
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .player-bar {

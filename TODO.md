@@ -63,6 +63,6 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 - [x] Support persistent transcripts, tags, summary, exports, and segment edits.
 - [x] Add folders or collections.
 - [x] Add bookmarks and highlights.
-- [ ] Add linked notes.
+- [x] Add linked notes.
 - [ ] Add speaker labeling.
 - [ ] Add AI extraction for action items and entities.

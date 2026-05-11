@@ -154,6 +154,7 @@ class BackendBehaviorTest(unittest.TestCase):
             ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path):
                 tagged = storage.update_record_tags("abc123", "Idea, idea, Follow Up")
                 collected = storage.update_record_collection("abc123", " Client Calls ")
+                noted = storage.update_record_notes("abc123", "Call Anna about the launch.")
                 edited = storage.update_segment_text("abc123", 0, "Hallo Welt.")
                 flagged = storage.update_segment_flags("abc123", 0, bookmarked=True, highlighted=True)
                 markdown = storage.markdown_export(flagged)
@@ -161,11 +162,14 @@ class BackendBehaviorTest(unittest.TestCase):
 
             self.assertEqual(tagged.tags, ["idea", "follow up"])
             self.assertEqual(collected.collection, "Client Calls")
+            self.assertEqual(noted.notes, "Call Anna about the launch.")
             self.assertEqual(edited.transcript_text, "Hallo Welt.")
             self.assertTrue(flagged.segments[0]["bookmarked"])
             self.assertTrue(flagged.segments[0]["highlighted"])
             self.assertIn("# Original", markdown)
             self.assertIn("- Collection: Client Calls", markdown)
+            self.assertIn("## Notes", markdown)
+            self.assertIn("Call Anna about the launch.", markdown)
             self.assertIn("bookmarked, highlighted", markdown)
             self.assertNotIn("ähm", clean_text)
 

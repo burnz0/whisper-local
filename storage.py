@@ -55,6 +55,7 @@ class TranscriptRecord:
     segments: list[dict]
     tags: list[str]
     collection: str
+    notes: str
 
     @property
     def audio_path(self) -> Path:
@@ -215,6 +216,7 @@ def record_from_payload(item: dict) -> TranscriptRecord:
         segments=segments,
         tags=normalize_tags(tags),
         collection=normalize_collection(item.get("collection", DEFAULT_COLLECTION)),
+        notes=str(item.get("notes", "")),
     )
 
 
@@ -281,6 +283,7 @@ def create_transcript_from_audio(audio_path: Path, transcript_id: str, source_na
         segments=segments,
         tags=[],
         collection=DEFAULT_COLLECTION,
+        notes="",
     )
     persist_record(record)
     return record
@@ -364,6 +367,20 @@ def update_record_collection(record_id: str, collection: object) -> TranscriptRe
     return updated_record
 
 
+def update_record_notes(record_id: str, notes: object) -> TranscriptRecord | None:
+    records = load_library()
+    updated_record = None
+    for record in records:
+        if record.id == record_id:
+            record.notes = str(notes or "").strip()[:8000]
+            updated_record = record
+            break
+    if updated_record is None:
+        return None
+    save_library(records)
+    return updated_record
+
+
 def update_segment_text(record_id: str, segment_id: int, text: str) -> TranscriptRecord | None:
     cleaned = " ".join(text.strip().split())
     records = load_library()
@@ -420,6 +437,8 @@ def markdown_export(record: TranscriptRecord) -> str:
     lines.append(f"- Collection: {record.collection}")
     lines.extend(["", "## Summary", ""])
     lines.extend(record.summary or ["No summary available yet."])
+    if record.notes:
+        lines.extend(["", "## Notes", "", record.notes])
     lines.extend(["", "## Transcript", ""])
     if record.segments:
         for segment in record.segments:
