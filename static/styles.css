@@ -686,9 +686,9 @@ input[type="text"]:focus,
 }
 
 .detail-header h2 {
-  font-size: 1.28rem;
-  font-weight: 620;
-  letter-spacing: -0.02em;
+  font-size: 1.36rem;
+  font-weight: 720;
+  letter-spacing: 0;
 }
 
 .title-row {
@@ -716,8 +716,9 @@ input[type="text"]:focus,
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
   padding: 0 10px;
-  font-size: 0.84rem;
-  color: rgba(189, 198, 214, 0.74);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(189, 198, 214, 0.78);
 }
 
 .actions {
@@ -733,6 +734,7 @@ input[type="text"]:focus,
   cursor: pointer;
   text-decoration: none;
   flex: 0 0 auto;
+  font-size: 0.9rem;
 }
 
 .icon-button--danger:hover {
@@ -787,7 +789,8 @@ input[type="text"]:focus,
   background: transparent;
   color: var(--muted);
   font: inherit;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 760;
   padding: 10px 4px;
   cursor: pointer;
 }
@@ -1067,7 +1070,9 @@ input[type="text"]:focus,
   background: rgba(255, 255, 255, 0.05);
   color: rgba(184, 194, 211, 0.8);
   font-variant-numeric: tabular-nums;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .segment-list.is-compact .segment-time {
@@ -1084,21 +1089,21 @@ input[type="text"]:focus,
 .segment p {
   min-width: 0;
   margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.5;
+  font-size: 1rem;
+  line-height: 1.58;
   font-weight: 400;
   color: rgba(243, 245, 248, 0.92);
   overflow-wrap: anywhere;
 }
 
 .segment-list.is-compact .segment p {
-  font-size: 0.88rem;
-  line-height: 1.38;
+  font-size: 0.92rem;
+  line-height: 1.42;
 }
 
 .segment-list.is-compact .segment-edit {
   min-height: 28px;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
 }
 
 .segment-editor {
@@ -1117,6 +1122,7 @@ input[type="text"]:focus,
   background: #111721;
   color: var(--text);
   font: inherit;
+  font-size: 0.96rem;
   line-height: 1.48;
   padding: var(--space-1) var(--space-2);
 }
@@ -1177,6 +1183,7 @@ input[type="text"]:focus,
 .summary-provider {
   color: var(--muted);
   font-size: 0.82rem;
+  font-weight: 650;
 }
 
 .summary-state {
@@ -1219,8 +1226,8 @@ input[type="text"]:focus,
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.04);
   background: rgba(255, 255, 255, 0.02);
-  line-height: 1.58;
-  font-size: 0.95rem;
+  line-height: 1.62;
+  font-size: 0.98rem;
 }
 
 .summary-card--loading,
@@ -1274,7 +1281,7 @@ input[type="text"]:focus,
   align-items: center;
   overflow: hidden;
   color: rgba(243, 245, 248, 0.86);
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   line-height: 1.35;
 }
 
@@ -1291,8 +1298,8 @@ input[type="text"]:focus,
 .player-now strong {
   min-width: 0;
   overflow: hidden;
-  font-size: 0.88rem;
-  font-weight: 650;
+  font-size: 0.92rem;
+  font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1360,8 +1367,8 @@ body.is-playing .waveform span:nth-child(4n) {
   background: rgba(49, 126, 81, 0.28);
   color: #63dd90;
   font-variant-numeric: tabular-nums;
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.84rem;
+  font-weight: 800;
   letter-spacing: 0.01em;
 }
 
@@ -1378,8 +1385,8 @@ body.is-playing .waveform span:nth-child(4n) {
   background: rgba(255, 255, 255, 0.035);
   color: #b8c2d3;
   font: inherit;
-  font-size: 0.84rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 800;
   padding: 0 12px;
   cursor: pointer;
 }
