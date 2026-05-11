@@ -1,7 +1,7 @@
 {
   "default_model": "small",
   "default_language": "de",
-  "summary_provider": "local_instruction",
+  "summary_provider": "local_instruction_quality",
   "summary_sentences": 3,
   "autoplay_on_seek": true,
   "confirm_before_delete": true

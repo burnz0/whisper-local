@@ -57,20 +57,44 @@ class BackendBehaviorTest(unittest.TestCase):
             summary, provider = app.generate_summary(
                 "Anna bespricht den Produktlaunch und nächste Schritte.",
                 "de",
-                {"summary_provider": "local_instruction", "summary_sentences": 3},
+                {"summary_provider": "local_instruction_quality", "summary_sentences": 3},
             )
 
         with mock.patch.object(summaries, "summarize_with_instruction_model", side_effect=RuntimeError("model unavailable")):
             fallback, fallback_provider = app.generate_summary(
                 "Anna bespricht den Produktlaunch und nächste Schritte.",
                 "de",
-                {"summary_provider": "local_instruction", "summary_sentences": 3},
+                {"summary_provider": "local_instruction_quality", "summary_sentences": 3},
             )
 
-        self.assertEqual(provider, "local_instruction")
+        self.assertEqual(provider, "local_instruction_quality")
         self.assertEqual(summary, ["Launch-Risiken und nächste Schritte."])
         self.assertEqual(fallback_provider, "extractive")
         self.assertTrue(fallback)
+
+    def test_transcript_creation_uses_fast_initial_summary(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            settings_path = root / "settings.json"
+            library_path = root / "library.json"
+            transcripts_dir = root / "transcripts"
+            uploads_dir = root / "uploads"
+            transcripts_dir.mkdir()
+            uploads_dir.mkdir()
+            audio_path = uploads_dir / "abc123.ogg"
+            audio_path.write_bytes(b"audio")
+            settings_path.write_text(json.dumps({**app.DEFAULT_SETTINGS, "summary_provider": "local_instruction_quality"}), encoding="utf-8")
+            library_path.write_text("[]\n", encoding="utf-8")
+
+            with mock.patch.object(storage, "DATA_DIR", root), mock.patch.object(storage, "UPLOAD_DIR", uploads_dir), mock.patch.object(
+                storage, "TRANSCRIPT_DIR", transcripts_dir
+            ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path), mock.patch.object(
+                storage, "transcribe_file", return_value=("Anna bespricht den Produktlaunch.", [], 4.0)
+            ), mock.patch.object(storage, "generate_summary", wraps=storage.generate_summary) as generate_mock:
+                record = storage.create_transcript_from_audio(audio_path, "abc123", "meeting.ogg", "base", "de")
+
+            self.assertEqual(record.summary_provider, "extractive")
+            self.assertEqual(generate_mock.call_args.kwargs["settings"]["summary_provider"], "extractive")
 
     def test_extractive_summary_cleans_timestamps_and_title_uses_summary(self):
         summary, provider = app.generate_summary(

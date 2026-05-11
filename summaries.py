@@ -3,7 +3,14 @@ from __future__ import annotations
 import logging
 import re
 
-from config import DEFAULT_SETTINGS, INSTRUCTION_SUMMARY_MODEL_NAME, SUMMARY_MODEL_NAME, SUMMARY_PROVIDERS
+from config import (
+    DEFAULT_SETTINGS,
+    FAST_INSTRUCTION_MODEL_NAME,
+    INSTRUCTION_SUMMARY_MODEL_NAME,
+    QUALITY_INSTRUCTION_MODEL_NAME,
+    SUMMARY_MODEL_NAME,
+    SUMMARY_PROVIDERS,
+)
 
 try:
     from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
@@ -420,15 +427,16 @@ def get_summary_backend():
     return tokenizer, model
 
 
-def get_instruction_backend():
-    if "instruction_backend" in _SUMMARY_BACKEND:
-        return _SUMMARY_BACKEND["instruction_backend"]
+def get_instruction_backend(model_name: str = INSTRUCTION_SUMMARY_MODEL_NAME):
+    cache_key = f"instruction_backend:{model_name}"
+    if cache_key in _SUMMARY_BACKEND:
+        return _SUMMARY_BACKEND[cache_key]
     if AutoTokenizer is None or AutoModelForCausalLM is None:
         raise RuntimeError("Transformers is not installed.")
 
-    tokenizer = AutoTokenizer.from_pretrained(INSTRUCTION_SUMMARY_MODEL_NAME)
-    model = AutoModelForCausalLM.from_pretrained(INSTRUCTION_SUMMARY_MODEL_NAME, dtype="auto")
-    _SUMMARY_BACKEND["instruction_backend"] = (tokenizer, model)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name, dtype="auto")
+    _SUMMARY_BACKEND[cache_key] = (tokenizer, model)
     return tokenizer, model
 
 
@@ -579,8 +587,13 @@ def summarize_with_local_model(text: str, language: str, max_items: int) -> list
     return [final_paragraph]
 
 
-def summarize_with_instruction_model(text: str, language: str, max_items: int) -> list[str]:
-    tokenizer, model = get_instruction_backend()
+def summarize_with_instruction_model(
+    text: str,
+    language: str,
+    max_items: int,
+    model_name: str = INSTRUCTION_SUMMARY_MODEL_NAME,
+) -> list[str]:
+    tokenizer, model = get_instruction_backend(model_name)
     cleaned = normalize_transcript_for_summary(text)
     if not cleaned:
         return ["No summary available yet."]
@@ -598,12 +611,37 @@ def summarize_with_instruction_model(text: str, language: str, max_items: int) -
     return good_items[:max_items]
 
 
+def generate_title_with_instruction_model(text: str, language: str, fallback: str) -> str:
+    tokenizer, model = get_instruction_backend(FAST_INSTRUCTION_MODEL_NAME)
+    cleaned = normalize_transcript_for_summary(text)
+    if not cleaned:
+        return slugify_title(fallback)
+    if language == "de":
+        prompt = (
+            "Erzeuge einen kurzen deutschen Titel fuer dieses Transkript.\n"
+            "Maximal 7 Woerter. Kein Satzzeichen am Ende. Keine Anfuehrungszeichen. Keine Erklaerung.\n\n"
+            f"Transkript:\n{cleaned[:3500]}\n\nTitel:"
+        )
+    else:
+        prompt = (
+            "Generate a short title for this transcript.\n"
+            "At most 7 words. No final punctuation. No quotes. No explanation.\n\n"
+            f"Transcript:\n{cleaned[:3500]}\n\nTitle:"
+        )
+    decoded = run_instruction_generation(tokenizer, model, prompt, max_new_tokens=40)
+    candidate = normalize_title_candidate(decoded, fallback)
+    if len(candidate.split()) < 2 or candidate.lower() == slugify_title(fallback).lower():
+        return generate_title_from_summary(sentence_summary(cleaned, max_items=2, language=language), fallback)
+    return candidate
+
+
 def generate_summary(text: str, language: str, settings: dict) -> tuple[list[str], str]:
     provider = settings["summary_provider"]
     max_items = int(settings["summary_sentences"])
-    if provider == "local_instruction":
+    if provider in {"local_instruction", "local_instruction_quality"}:
         try:
-            return summarize_with_instruction_model(text, language, max_items), provider
+            model_name = QUALITY_INSTRUCTION_MODEL_NAME if provider == "local_instruction_quality" else FAST_INSTRUCTION_MODEL_NAME
+            return summarize_with_instruction_model(text, language, max_items, model_name=model_name), provider
         except Exception as exc:
             message = str(exc).strip().splitlines()[0] if str(exc).strip() else exc.__class__.__name__
             if "not installed" in message or "unavailable" in message or "quality checks" in message:

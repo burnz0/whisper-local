@@ -15,6 +15,7 @@ from transcription import processing_mode_label
 
 logger = logging.getLogger(__name__)
 _EXECUTOR = ThreadPoolExecutor(max_workers=1)
+_ANALYSIS_EXECUTOR = ThreadPoolExecutor(max_workers=1)
 _LOCK = threading.Lock()
 _JOBS: dict[str, "TranscriptionJob"] = {}
 
@@ -104,7 +105,19 @@ def _run_job(job_id: str, audio_path: Path, transcript_id: str, source_name: str
         _update_job(job_id, status="failed", error=error, completed_at=time.time())
         return
     _update_job(job_id, status="complete", record_id=record.id, completed_at=time.time())
+    _ANALYSIS_EXECUTOR.submit(_run_background_title_job, record.id)
     logger.info("transcription job complete job=%s record=%s", job_id, record.id)
+
+
+def _run_background_title_job(record_id: str) -> None:
+    try:
+        from storage import update_record_title_with_instruction_model
+
+        updated = update_record_title_with_instruction_model(record_id)
+        if updated is not None:
+            logger.info("background title generation complete record=%s title=%s", record_id, updated.title)
+    except Exception:
+        logger.exception("background title generation failed record=%s", record_id)
 
 
 def _update_job(job_id: str, **updates) -> None:

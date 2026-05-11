@@ -24,6 +24,7 @@ from config import (
 from summaries import (
     generate_summary,
     generate_title_from_summary,
+    generate_title_with_instruction_model,
     normalize_settings,
     paragraphize_summary,
     sentence_summary,
@@ -131,6 +132,7 @@ def load_library() -> list[TranscriptRecord]:
 def migrate_library() -> int:
     ensure_dirs()
     settings = load_settings()
+    initial_summary_settings = {"summary_provider": "extractive", "summary_sentences": settings["summary_sentences"]}
     raw = load_json_file(LIBRARY_PATH, [], list)
     migrated = []
     changed_count = 0
@@ -148,7 +150,7 @@ def migrate_library() -> int:
             summary, used_provider = generate_summary(
                 transcript_text,
                 str(next_item.get("language", DEFAULT_LANGUAGE)),
-                settings,
+                initial_summary_settings,
             )
             next_item["summary"] = summary
             next_item["summary_provider"] = used_provider
@@ -253,12 +255,15 @@ def save_upload(file_storage) -> tuple[Path, str, str]:
 
 
 def create_transcript_from_audio(audio_path: Path, transcript_id: str, source_name: str, model_name: str, language: str) -> TranscriptRecord:
-    settings = load_settings()
     text, segments, duration = transcribe_file(audio_path, model_name=model_name, language=language)
     title = slugify_title(Path(source_name).stem.replace("_", " "))
     created_at = datetime.now().isoformat(timespec="seconds")
     transcript_filename = f"{transcript_id}.txt"
-    summary, summary_provider = generate_summary(text, language=language, settings=settings)
+    summary, summary_provider = generate_summary(
+        text,
+        language=language,
+        settings={"summary_provider": "extractive", "summary_sentences": 2},
+    )
     generated_title = generate_title_from_summary(summary, title)
 
     record = TranscriptRecord(
@@ -282,6 +287,28 @@ def create_transcript_from_audio(audio_path: Path, transcript_id: str, source_na
     )
     persist_record(record)
     return record
+
+
+def update_record_title_with_instruction_model(record_id: str) -> TranscriptRecord | None:
+    records = load_library()
+    updated_record = None
+    for record in records:
+        if record.id != record_id:
+            continue
+        if record.title_source != "auto":
+            return record
+        fallback_title = record.title or Path(record.filename).stem.replace("_", " ")
+        try:
+            record.title = generate_title_with_instruction_model(record.transcript_text, record.language, fallback_title)
+        except Exception as exc:
+            logger.info("background title generation failed record=%s: %s", record_id, str(exc).splitlines()[0] if str(exc) else exc.__class__.__name__)
+            return record
+        updated_record = record
+        break
+    if updated_record is None:
+        return None
+    save_library(records)
+    return updated_record
 
 
 def create_transcript_from_upload(file_storage, model_name: str, language: str) -> TranscriptRecord:
