@@ -64,5 +64,5 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 - [x] Add folders or collections.
 - [x] Add bookmarks and highlights.
 - [x] Add linked notes.
-- [ ] Add speaker labeling.
+- [x] Add speaker labeling.
 - [ ] Add AI extraction for action items and entities.

@@ -246,8 +246,10 @@
                   <span aria-hidden="true">▶</span>
                 </button>
                 <div class="segment-time">{{ segment.start_label }}</div>
+                <span class="segment-speaker" data-segment-speaker-label="{{ segment.id }}" {% if not segment.speaker %}hidden{% endif %}>{{ segment.speaker }}</span>
                 <p>{{ segment.text }}</p>
                 <div class="segment-tools">
+                  <button class="segment-speaker-button" type="button" data-speaker-segment="{{ segment.id }}">Speaker</button>
                   <button class="segment-flag" type="button" data-segment-flag="highlighted" aria-pressed="{{ 'true' if segment.highlighted else 'false' }}">Highlight</button>
                   <button class="segment-flag" type="button" data-segment-flag="bookmarked" aria-pressed="{{ 'true' if segment.bookmarked else 'false' }}">Bookmark</button>
                   <button class="segment-edit" type="button" data-edit-segment="{{ segment.id }}">Edit</button>

@@ -157,7 +157,8 @@ class BackendBehaviorTest(unittest.TestCase):
                 noted = storage.update_record_notes("abc123", "Call Anna about the launch.")
                 edited = storage.update_segment_text("abc123", 0, "Hallo Welt.")
                 flagged = storage.update_segment_flags("abc123", 0, bookmarked=True, highlighted=True)
-                markdown = storage.markdown_export(flagged)
+                spoken = storage.update_segment_speaker("abc123", 0, " Anna ")
+                markdown = storage.markdown_export(spoken)
                 clean_text = storage.cleaned_transcript_text(storage.get_record("abc123"))
 
             self.assertEqual(tagged.tags, ["idea", "follow up"])
@@ -166,10 +167,12 @@ class BackendBehaviorTest(unittest.TestCase):
             self.assertEqual(edited.transcript_text, "Hallo Welt.")
             self.assertTrue(flagged.segments[0]["bookmarked"])
             self.assertTrue(flagged.segments[0]["highlighted"])
+            self.assertEqual(spoken.segments[0]["speaker"], "Anna")
             self.assertIn("# Original", markdown)
             self.assertIn("- Collection: Client Calls", markdown)
             self.assertIn("## Notes", markdown)
             self.assertIn("Call Anna about the launch.", markdown)
+            self.assertIn("**Anna:**", markdown)
             self.assertIn("bookmarked, highlighted", markdown)
             self.assertNotIn("ähm", clean_text)
 

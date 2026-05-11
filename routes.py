@@ -26,6 +26,7 @@ from storage import (
     update_record_notes,
     update_record_tags,
     update_segment_flags,
+    update_segment_speaker,
     update_segment_text,
 )
 from summaries import (
@@ -324,6 +325,15 @@ def register_routes(app) -> None:
             bookmarked=payload.get("bookmarked") if "bookmarked" in payload else None,
             highlighted=payload.get("highlighted") if "highlighted" in payload else None,
         )
+        if record is None:
+            return jsonify({"ok": False, "error": "Record or segment not found."}), 404
+        segment = next((item for item in record.segments if int(item.get("id", -1)) == segment_id), {})
+        return jsonify({"ok": True, "segment": segment})
+
+    @app.post("/transcripts/<record_id>/segments/<int:segment_id>/speaker")
+    def segment_speaker_route(record_id: str, segment_id: int):
+        payload = request.get_json(silent=True) or {}
+        record = update_segment_speaker(record_id, segment_id, payload.get("speaker", ""))
         if record is None:
             return jsonify({"ok": False, "error": "Record or segment not found."}), 404
         segment = next((item for item in record.segments if int(item.get("id", -1)) == segment_id), {})

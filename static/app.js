@@ -383,7 +383,12 @@
 
     segmentRows.forEach((row) => {
       row.addEventListener("click", (event) => {
-        if (event.target instanceof HTMLElement && event.target.closest(".segment-play")) return;
+        if (
+          event.target instanceof HTMLElement &&
+          event.target.closest(".segment-play, .segment-tools, .segment-editor, .segment-speaker-editor")
+        ) {
+          return;
+        }
         audio.currentTime = Number(row.dataset.start || 0);
         currentTime.textContent = formatTime(audio.currentTime);
         syncProgress();
@@ -744,6 +749,78 @@
       }
     });
   }
+
+  document.querySelectorAll("[data-speaker-segment]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!state) return;
+      const segment = button.closest(".segment");
+      const speakerLabel = segment && segment.querySelector("[data-segment-speaker-label]");
+      if (!segment || !speakerLabel || segment.classList.contains("is-labeling-speaker")) return;
+      const editor = document.createElement("form");
+      const input = document.createElement("input");
+      const save = document.createElement("button");
+      const clear = document.createElement("button");
+      const cancel = document.createElement("button");
+
+      editor.className = "segment-speaker-editor";
+      input.type = "text";
+      input.value = speakerLabel.hidden ? "" : speakerLabel.textContent.trim();
+      input.placeholder = "Speaker name";
+      input.setAttribute("aria-label", "Speaker name");
+      save.className = "secondary-action";
+      save.type = "submit";
+      save.textContent = "Save";
+      clear.className = "secondary-action";
+      clear.type = "button";
+      clear.textContent = "Clear";
+      cancel.className = "secondary-action";
+      cancel.type = "button";
+      cancel.textContent = "Cancel";
+      editor.append(input, save, clear, cancel);
+
+      const closeEditor = () => {
+        editor.remove();
+        button.hidden = false;
+        segment.classList.remove("is-labeling-speaker");
+      };
+      const saveSpeaker = async (speaker) => {
+        save.disabled = true;
+        clear.disabled = true;
+        cancel.disabled = true;
+        try {
+          const response = await fetch(`/transcripts/${state.recordId}/segments/${button.dataset.speakerSegment}/speaker`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ speaker })
+          });
+          const payload = await response.json();
+          if (!payload.ok) throw new Error(payload.error || "Speaker update failed.");
+          const nextSpeaker = (payload.segment && payload.segment.speaker) || "";
+          speakerLabel.textContent = nextSpeaker;
+          speakerLabel.hidden = !nextSpeaker;
+          closeEditor();
+        } catch (error) {
+          console.error(error);
+          save.disabled = false;
+          clear.disabled = false;
+          cancel.disabled = false;
+        }
+      };
+
+      cancel.addEventListener("click", closeEditor);
+      clear.addEventListener("click", () => saveSpeaker(""));
+      editor.addEventListener("submit", (event) => {
+        event.preventDefault();
+        saveSpeaker(input.value);
+      });
+
+      segment.classList.add("is-labeling-speaker");
+      button.hidden = true;
+      segment.appendChild(editor);
+      input.focus();
+      input.select();
+    });
+  });
 
   document.querySelectorAll("[data-edit-segment]").forEach((button) => {
     button.addEventListener("click", () => {

@@ -192,6 +192,7 @@ def record_from_payload(item: dict) -> TranscriptRecord:
         next_segment = dict(segment)
         next_segment["bookmarked"] = bool(next_segment.get("bookmarked", False))
         next_segment["highlighted"] = bool(next_segment.get("highlighted", False))
+        next_segment["speaker"] = normalize_speaker(next_segment.get("speaker", ""))
         segments.append(next_segment)
     summary = item.get("summary") if isinstance(item.get("summary"), list) else []
     tags = item.get("tags") if isinstance(item.get("tags"), list) else []
@@ -334,6 +335,12 @@ def normalize_collection(collection: object) -> str:
     return cleaned[:48] if cleaned else DEFAULT_COLLECTION
 
 
+def normalize_speaker(speaker: object) -> str:
+    cleaned = " ".join(str(speaker or "").strip().split())
+    cleaned = cleaned.strip(" :,;")
+    return cleaned[:40]
+
+
 def build_transcript_text(segments: list[dict], fallback: str = "") -> str:
     texts = [str(segment.get("text", "")).strip() for segment in segments if str(segment.get("text", "")).strip()]
     return "\n".join(texts) if texts else fallback
@@ -423,6 +430,24 @@ def update_segment_flags(record_id: str, segment_id: int, *, bookmarked: bool | 
     return updated_record
 
 
+def update_segment_speaker(record_id: str, segment_id: int, speaker: object) -> TranscriptRecord | None:
+    records = load_library()
+    updated_record = None
+    for record in records:
+        if record.id != record_id:
+            continue
+        for segment in record.segments:
+            if int(segment.get("id", -1)) == segment_id:
+                segment["speaker"] = normalize_speaker(speaker)
+                updated_record = record
+                break
+        break
+    if updated_record is None:
+        return None
+    save_library(records)
+    return updated_record
+
+
 def markdown_export(record: TranscriptRecord) -> str:
     lines = [
         f"# {record.title}",
@@ -448,7 +473,8 @@ def markdown_export(record: TranscriptRecord) -> str:
             if segment.get("highlighted"):
                 flags.append("highlighted")
             flag_label = f" _{', '.join(flags)}_" if flags else ""
-            lines.append(f"**{segment.get('start_label', '00:00')}**{flag_label} {segment.get('text', '').strip()}")
+            speaker_label = f" **{segment.get('speaker')}:**" if segment.get("speaker") else ""
+            lines.append(f"**{segment.get('start_label', '00:00')}**{flag_label}{speaker_label} {segment.get('text', '').strip()}")
             lines.append("")
     else:
         lines.append(record.transcript_text)
