@@ -30,7 +30,7 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 - [x] Add follow-playback toggle.
 - [x] Add current segment emphasis in the player.
 - [ ] Add waveform seeking backed by real audio data or transcript timing.
-- [ ] Improve segment edit flow beyond browser prompts.
+- [x] Improve segment edit flow beyond browser prompts.
 - [x] Add compact transcript density controls.
 
 ## P1 - Search

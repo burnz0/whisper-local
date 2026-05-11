@@ -630,25 +630,79 @@
   }
 
   document.querySelectorAll("[data-edit-segment]").forEach((button) => {
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", () => {
       if (!state) return;
       const segment = button.closest(".segment");
       const textEl = segment && segment.querySelector("p");
-      if (!segment || !textEl) return;
+      if (!segment || !textEl || segment.classList.contains("is-editing")) return;
       const currentText = textEl.dataset.originalText || textEl.textContent || "";
-      const nextText = window.prompt("Edit segment text", currentText);
-      if (!nextText || nextText.trim() === currentText.trim()) return;
-      const response = await fetch(`/transcripts/${state.recordId}/segments/${button.dataset.editSegment}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: nextText })
+      const editor = document.createElement("form");
+      const textarea = document.createElement("textarea");
+      const actions = document.createElement("div");
+      const save = document.createElement("button");
+      const cancel = document.createElement("button");
+      const status = document.createElement("span");
+
+      editor.className = "segment-editor";
+      textarea.value = currentText;
+      textarea.rows = 3;
+      textarea.setAttribute("aria-label", "Segment text");
+      actions.className = "segment-editor__actions";
+      save.className = "secondary-action";
+      save.type = "submit";
+      save.textContent = "Save";
+      cancel.className = "secondary-action";
+      cancel.type = "button";
+      cancel.textContent = "Cancel";
+      status.className = "segment-editor__status";
+      status.setAttribute("aria-live", "polite");
+      actions.append(save, cancel, status);
+      editor.append(textarea, actions);
+
+      const closeEditor = () => {
+        editor.remove();
+        textEl.hidden = false;
+        button.hidden = false;
+        segment.classList.remove("is-editing");
+      };
+
+      cancel.addEventListener("click", closeEditor);
+      editor.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const nextText = textarea.value.trim();
+        if (!nextText || nextText === currentText.trim()) {
+          closeEditor();
+          return;
+        }
+        save.disabled = true;
+        cancel.disabled = true;
+        status.textContent = "Saving...";
+        try {
+          const response = await fetch(`/transcripts/${state.recordId}/segments/${button.dataset.editSegment}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: nextText })
+          });
+          const payload = await response.json();
+          if (!payload.ok) throw new Error(payload.error || "Segment update failed.");
+          textEl.textContent = nextText;
+          textEl.dataset.originalText = nextText;
+          segment.dataset.text = nextText.toLowerCase();
+          state.transcriptText = payload.transcript_text || state.transcriptText;
+          closeEditor();
+        } catch (error) {
+          save.disabled = false;
+          cancel.disabled = false;
+          status.textContent = error.message || "Could not save segment.";
+        }
       });
-      const payload = await response.json();
-      if (!payload.ok) return;
-      textEl.textContent = nextText.trim();
-      textEl.dataset.originalText = nextText.trim();
-      segment.dataset.text = nextText.trim().toLowerCase();
-      state.transcriptText = payload.transcript_text || state.transcriptText;
+
+      segment.classList.add("is-editing");
+      textEl.hidden = true;
+      button.hidden = true;
+      textEl.after(editor);
+      textarea.focus();
+      textarea.select();
     });
   });
 

@@ -1010,6 +1010,48 @@ input[type="search"] {
   font-size: 0.76rem;
 }
 
+.segment-editor {
+  grid-column: 3 / -1;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.segment-editor textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid rgba(82, 207, 125, 0.18);
+  background: #111721;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.48;
+  padding: 10px 12px;
+}
+
+.segment-editor__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.segment-editor__status {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.segment-list.is-compact .segment-editor {
+  grid-column: 3 / -1;
+}
+
+.segment-list.is-compact .segment-editor textarea {
+  min-height: 76px;
+  font-size: 0.88rem;
+  line-height: 1.38;
+}
+
 .segment mark {
   border-radius: 5px;
   background: rgba(82, 207, 125, 0.28);
