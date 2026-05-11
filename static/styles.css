@@ -967,6 +967,7 @@ body.is-playing .waveform span:nth-child(4n) {
 
 .player-right {
   flex: 0 0 auto;
+  gap: 10px;
 }
 
 .time-pill {
@@ -989,6 +990,29 @@ body.is-playing .waveform span:nth-child(4n) {
   min-width: 74px;
   background: rgba(255, 255, 255, 0.04);
   color: #b8c2d3;
+}
+
+.follow-toggle {
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.035);
+  color: #b8c2d3;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.follow-toggle.is-active {
+  border-color: rgba(82, 207, 125, 0.18);
+  background: rgba(49, 126, 81, 0.2);
+  color: #63dd90;
+}
+
+.follow-toggle:hover {
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .waveform {

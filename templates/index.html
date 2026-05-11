@@ -242,6 +242,7 @@
                 >
               </div>
               <div class="player-right">
+                <button class="follow-toggle is-active" type="button" id="follow-playback-toggle" aria-pressed="true" title="Follow playback">Follow</button>
                 <span class="time-pill time-pill--muted" id="duration-time">{{ selected.duration_seconds|round|int if selected.duration_seconds else 0 }}s</span>
               </div>
             </div>

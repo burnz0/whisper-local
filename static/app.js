@@ -7,6 +7,7 @@
   const durationTime = document.getElementById("duration-time");
   const progress = document.getElementById("audio-progress");
   const playerNow = document.getElementById("player-now");
+  const followPlaybackToggle = document.getElementById("follow-playback-toggle");
   const search = document.getElementById("segment-search");
   const tabs = document.querySelectorAll(".tab");
   const panes = document.querySelectorAll(".pane");
@@ -47,6 +48,7 @@
   };
   const segmentRows = Array.from(document.querySelectorAll(".segment[data-start]"));
   let lastActiveSegment = null;
+  let followPlayback = window.localStorage.getItem("whisperLocal.followPlayback") !== "false";
   const formatTime = (seconds) => {
     const total = Math.max(0, Math.floor(seconds || 0));
     const mins = Math.floor(total / 60);
@@ -134,11 +136,30 @@
       playerNow.textContent = titleEl.textContent || "";
     }
     const isFiltering = Boolean(search && search.value.trim());
-    if (activeRow && activeRow !== lastActiveSegment && !isFiltering) {
+    if (activeRow && activeRow !== lastActiveSegment && followPlayback && !isFiltering) {
       activeRow.scrollIntoView({ block: "nearest", behavior: "smooth" });
       lastActiveSegment = activeRow;
     }
   };
+
+  const renderFollowPlayback = () => {
+    if (!followPlaybackToggle) return;
+    followPlaybackToggle.classList.toggle("is-active", followPlayback);
+    followPlaybackToggle.setAttribute("aria-pressed", String(followPlayback));
+  };
+
+  renderFollowPlayback();
+
+  if (followPlaybackToggle) {
+    followPlaybackToggle.addEventListener("click", () => {
+      followPlayback = !followPlayback;
+      window.localStorage.setItem("whisperLocal.followPlayback", String(followPlayback));
+      renderFollowPlayback();
+      if (followPlayback && audio) {
+        syncActiveSegment(audio.currentTime || 0);
+      }
+    });
+  }
 
   const askForConfirmation = ({ title, message, confirmLabel = "Delete" }) =>
     new Promise((resolve) => {
