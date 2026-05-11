@@ -291,6 +291,12 @@ body::before {
   font-size: 0.92rem;
 }
 
+.field-hint {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
 .toggle-row {
   grid-template-columns: 18px 1fr;
   align-items: start;
@@ -656,6 +662,8 @@ input[type="search"] {
 .actions {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .icon-button {
@@ -678,6 +686,31 @@ input[type="search"] {
   gap: 12px;
   padding: 0 20px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tag-editor {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 280px) auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.tag-editor label {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.tag-editor input {
+  width: 100%;
+  min-height: 36px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #111721;
+  color: var(--text);
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.88rem;
 }
 
 .tab {
@@ -765,7 +798,7 @@ input[type="search"] {
 
 .segment {
   display: grid;
-  grid-template-columns: 38px 74px 1fr;
+  grid-template-columns: 38px 74px 1fr auto;
   gap: 12px;
   align-items: start;
   padding: 12px 0;
@@ -776,6 +809,23 @@ input[type="search"] {
     background 160ms ease,
     box-shadow 160ms ease,
     transform 160ms ease;
+}
+
+.segment-edit {
+  min-height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.segment-edit:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .segment:last-child {
@@ -1225,6 +1275,10 @@ body.is-playing .waveform span:nth-child(4n) {
     grid-template-columns: 40px 1fr;
   }
 
+  .tag-editor {
+    grid-template-columns: 1fr;
+  }
+
   .player-main {
     gap: 14px;
     align-items: center;
@@ -1254,6 +1308,11 @@ body.is-playing .waveform span:nth-child(4n) {
 
   .segment p {
     grid-column: 1 / -1;
+  }
+
+  .segment-edit {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .waveform {

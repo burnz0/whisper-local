@@ -115,6 +115,44 @@ class BackendBehaviorTest(unittest.TestCase):
             self.assertEqual(records[0].id, "abc123")
             self.assertTrue(records[0].summary)
 
+    def test_tags_exports_cleanup_and_segment_edit(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            library_path = root / "library.json"
+            settings_path = root / "settings.json"
+            transcripts_dir = root / "transcripts"
+            transcripts_dir.mkdir()
+            record = {
+                "id": "abc123",
+                "title": "Original",
+                "filename": "recording.ogg",
+                "stored_filename": "abc123.ogg",
+                "transcript_filename": "abc123.txt",
+                "created_at": "2026-05-11T12:00:00",
+                "model": "base",
+                "language": "de",
+                "duration_seconds": 12,
+                "transcript_text": "ähm Hallo Welt.",
+                "summary": ["Hallo Welt."],
+                "summary_provider": "extractive",
+                "segments": [{"id": 0, "start_label": "00:00", "text": "ähm Hallo Welt."}],
+            }
+            library_path.write_text(json.dumps([record], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            settings_path.write_text(json.dumps(app.DEFAULT_SETTINGS), encoding="utf-8")
+
+            with mock.patch.object(storage, "DATA_DIR", root), mock.patch.object(storage, "UPLOAD_DIR", root / "uploads"), mock.patch.object(
+                storage, "TRANSCRIPT_DIR", transcripts_dir
+            ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path):
+                tagged = storage.update_record_tags("abc123", "Idea, idea, Follow Up")
+                edited = storage.update_segment_text("abc123", 0, "Hallo Welt.")
+                markdown = storage.markdown_export(edited)
+                clean_text = storage.cleaned_transcript_text(storage.get_record("abc123"))
+
+            self.assertEqual(tagged.tags, ["idea", "follow up"])
+            self.assertEqual(edited.transcript_text, "Hallo Welt.")
+            self.assertIn("# Original", markdown)
+            self.assertNotIn("ähm", clean_text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,19 +1,25 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
-from flask import abort, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask import Response, abort, jsonify, redirect, render_template, request, send_from_directory, url_for
 
 from config import LANGUAGES, MODELS, SUMMARY_PROVIDERS, TRANSCRIPT_DIR, UPLOAD_ACCEPT, UPLOAD_DIR
 from jobs import get_job, start_transcription_job
 from storage import (
     delete_record,
     get_record,
+    json_export,
     load_library,
     load_settings,
+    markdown_export,
     rename_record,
     save_settings,
     save_upload,
+    cleaned_transcript_text,
+    update_record_tags,
+    update_segment_text,
 )
 from summaries import (
     generate_summary,
@@ -185,6 +191,25 @@ def register_routes(app) -> None:
         next_url = url_for("transcript_detail", record_id=remaining[0].id) if remaining else url_for("index")
         return jsonify({"ok": True, "redirect_url": next_url, "remaining_count": len(remaining)})
 
+    @app.post("/transcripts/<record_id>/tags")
+    def tags_route(record_id: str):
+        payload = request.get_json(silent=True) or {}
+        record = update_record_tags(record_id, payload.get("tags", []))
+        if record is None:
+            return jsonify({"ok": False, "error": "Record not found."}), 404
+        return jsonify({"ok": True, "tags": record.tags})
+
+    @app.post("/transcripts/<record_id>/segments/<int:segment_id>")
+    def segment_update_route(record_id: str, segment_id: int):
+        payload = request.get_json(silent=True) or {}
+        text = str(payload.get("text", "")).strip()
+        if not text:
+            return jsonify({"ok": False, "error": "Segment text cannot be empty."}), 400
+        record = update_segment_text(record_id, segment_id, text)
+        if record is None:
+            return jsonify({"ok": False, "error": "Record or segment not found."}), 404
+        return jsonify({"ok": True, "transcript_text": record.transcript_text})
+
     @app.post("/settings")
     def settings_route():
         settings = load_settings()
@@ -253,4 +278,37 @@ def register_routes(app) -> None:
             record.transcript_filename,
             as_attachment=True,
             download_name=f"{record.title}.txt",
+        )
+
+    @app.get("/downloads/<record_id>.md")
+    def download_markdown(record_id: str):
+        record = get_record(record_id)
+        if record is None:
+            abort(404)
+        return Response(
+            markdown_export(record),
+            mimetype="text/markdown",
+            headers={"Content-Disposition": f"attachment; filename={record.title}.md"},
+        )
+
+    @app.get("/downloads/<record_id>.json")
+    def download_json(record_id: str):
+        record = get_record(record_id)
+        if record is None:
+            abort(404)
+        return Response(
+            json.dumps(json_export(record), ensure_ascii=False, indent=2) + "\n",
+            mimetype="application/json",
+            headers={"Content-Disposition": f"attachment; filename={record.title}.json"},
+        )
+
+    @app.get("/downloads/<record_id>.clean.txt")
+    def download_clean_text(record_id: str):
+        record = get_record(record_id)
+        if record is None:
+            abort(404)
+        return Response(
+            cleaned_transcript_text(record),
+            mimetype="text/plain",
+            headers={"Content-Disposition": f"attachment; filename={record.title}.clean.txt"},
         )

@@ -36,13 +36,14 @@
           <span>App Settings</span>
         </header>
         <form action="{{ url_for('settings_route') }}" method="post" class="sidebar-settings__form">
-          <label>
-            <span>Default model</span>
-            <select name="default_model">
+              <label>
+                <span>Default model</span>
+                <select name="default_model">
               {% for model in models %}
               <option value="{{ model }}" {% if model == settings.default_model %}selected{% endif %}>{{ model|capitalize }}</option>
               {% endfor %}
             </select>
+            <small class="field-hint">Tiny is fastest, Small is more accurate.</small>
           </label>
           <label>
             <span>Default language</span>
@@ -146,6 +147,7 @@
                   <option value="{{ model }}" {% if model == default_model %}selected{% endif %}>{{ model|capitalize }}</option>
                   {% endfor %}
                 </select>
+                <small class="field-hint">Tiny is fastest, Small is more accurate.</small>
               </label>
               <label class="inline-field">
                 <span>Language</span>
@@ -180,10 +182,24 @@
                 <span>{{ languages[selected.language] }} ({{ selected.language }})</span>
                 <span>{{ selected.model }}</span>
               </div>
+              <form class="tag-editor" id="tag-editor">
+                <label for="tags-input">Tags</label>
+                <input type="text" id="tags-input" value="{{ selected.tags|join(', ') }}" placeholder="meeting, idea, follow-up">
+                <button class="secondary-action" type="submit">Save</button>
+              </form>
             </div>
             <div class="actions">
               <a class="icon-button" href="{{ url_for('download_text', record_id=selected.id) }}" title="Download text" aria-label="Download text">
                 <span aria-hidden="true">⇩</span>
+              </a>
+              <a class="icon-button" href="{{ url_for('download_markdown', record_id=selected.id) }}" title="Download Markdown" aria-label="Download Markdown">
+                <span aria-hidden="true">M</span>
+              </a>
+              <a class="icon-button" href="{{ url_for('download_json', record_id=selected.id) }}" title="Download JSON" aria-label="Download JSON">
+                <span aria-hidden="true">{}</span>
+              </a>
+              <a class="icon-button" href="{{ url_for('download_clean_text', record_id=selected.id) }}" title="Download cleaned text" aria-label="Download cleaned text">
+                <span aria-hidden="true">C</span>
               </a>
               <button class="icon-button" id="copy-button" title="Copy transcript" aria-label="Copy transcript">
                 <span aria-hidden="true">⧉</span>
@@ -212,6 +228,7 @@
                 </button>
                 <div class="segment-time">{{ segment.start_label }}</div>
                 <p>{{ segment.text }}</p>
+                <button class="segment-edit" type="button" data-edit-segment="{{ segment.id }}">Edit</button>
               </article>
               {% endfor %}
               {% if not selected.segments %}

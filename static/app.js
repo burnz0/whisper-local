@@ -13,6 +13,8 @@
   const copyButton = document.getElementById("copy-button");
   const renameButton = document.getElementById("rename-button");
   const deleteButton = document.getElementById("delete-button");
+  const tagEditor = document.getElementById("tag-editor");
+  const tagsInput = document.getElementById("tags-input");
   const refreshSummaryButton = document.getElementById("refresh-summary-button");
   const summaryCards = document.getElementById("summary-cards");
   const summaryProviderLabel = document.getElementById("summary-provider-label");
@@ -401,6 +403,44 @@
       }
     });
   }
+
+  if (tagEditor && tagsInput && state) {
+    tagEditor.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const response = await fetch(`/transcripts/${state.recordId}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: tagsInput.value.split(",") })
+      });
+      const payload = await response.json();
+      if (payload.ok) {
+        tagsInput.value = payload.tags.join(", ");
+      }
+    });
+  }
+
+  document.querySelectorAll("[data-edit-segment]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!state) return;
+      const segment = button.closest(".segment");
+      const textEl = segment && segment.querySelector("p");
+      if (!segment || !textEl) return;
+      const currentText = textEl.dataset.originalText || textEl.textContent || "";
+      const nextText = window.prompt("Edit segment text", currentText);
+      if (!nextText || nextText.trim() === currentText.trim()) return;
+      const response = await fetch(`/transcripts/${state.recordId}/segments/${button.dataset.editSegment}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: nextText })
+      });
+      const payload = await response.json();
+      if (!payload.ok) return;
+      textEl.textContent = nextText.trim();
+      textEl.dataset.originalText = nextText.trim();
+      segment.dataset.text = nextText.trim().toLowerCase();
+      state.transcriptText = payload.transcript_text || state.transcriptText;
+    });
+  });
 
   const deleteRecord = async (recordId) => {
     const response = await fetch(`/transcripts/${recordId}/delete`, { method: "POST" });

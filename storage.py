@@ -52,6 +52,7 @@ class TranscriptRecord:
     summary: list[str]
     summary_provider: str
     segments: list[dict]
+    tags: list[str]
 
     @property
     def audio_path(self) -> Path:
@@ -182,6 +183,7 @@ def record_from_payload(item: dict) -> TranscriptRecord:
     model = str(item.get("model", DEFAULT_MODEL))
     segments = item.get("segments") if isinstance(item.get("segments"), list) else []
     summary = item.get("summary") if isinstance(item.get("summary"), list) else []
+    tags = item.get("tags") if isinstance(item.get("tags"), list) else []
 
     if not summary:
         summary = paragraphize_summary(sentence_summary(transcript_text), max_chars=320)
@@ -201,6 +203,7 @@ def record_from_payload(item: dict) -> TranscriptRecord:
         summary=[str(entry) for entry in summary],
         summary_provider=str(item.get("summary_provider") or "extractive"),
         segments=segments,
+        tags=normalize_tags(tags),
     )
 
 
@@ -265,6 +268,7 @@ def create_transcript_from_audio(audio_path: Path, transcript_id: str, source_na
         summary=summary,
         summary_provider=summary_provider,
         segments=segments,
+        tags=[],
     )
     persist_record(record)
     return record
@@ -288,6 +292,111 @@ def rename_record(record_id: str, title: str) -> bool:
     if updated:
         save_library(records)
     return updated
+
+
+def normalize_tags(tags: list[object] | str) -> list[str]:
+    if isinstance(tags, str):
+        raw_tags = tags.split(",")
+    else:
+        raw_tags = tags
+    normalized = []
+    seen = set()
+    for tag in raw_tags:
+        cleaned = " ".join(str(tag).strip().lower().split())
+        cleaned = cleaned.strip(" #,;")
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        normalized.append(cleaned[:32])
+        if len(normalized) == 12:
+            break
+    return normalized
+
+
+def build_transcript_text(segments: list[dict], fallback: str = "") -> str:
+    texts = [str(segment.get("text", "")).strip() for segment in segments if str(segment.get("text", "")).strip()]
+    return "\n".join(texts) if texts else fallback
+
+
+def update_record_tags(record_id: str, tags: list[object] | str) -> TranscriptRecord | None:
+    records = load_library()
+    updated_record = None
+    for record in records:
+        if record.id == record_id:
+            record.tags = normalize_tags(tags)
+            updated_record = record
+            break
+    if updated_record is None:
+        return None
+    save_library(records)
+    return updated_record
+
+
+def update_segment_text(record_id: str, segment_id: int, text: str) -> TranscriptRecord | None:
+    cleaned = " ".join(text.strip().split())
+    records = load_library()
+    updated_record = None
+    for record in records:
+        if record.id != record_id:
+            continue
+        for segment in record.segments:
+            if int(segment.get("id", -1)) == segment_id:
+                segment["text"] = cleaned
+                record.transcript_text = build_transcript_text(record.segments, record.transcript_text)
+                updated_record = record
+                break
+        break
+    if updated_record is None:
+        return None
+    save_library(records)
+    updated_record.transcript_path.write_text(updated_record.transcript_text, encoding="utf-8")
+    return updated_record
+
+
+def markdown_export(record: TranscriptRecord) -> str:
+    lines = [
+        f"# {record.title}",
+        "",
+        f"- Date: {record.created_at[:10]}",
+        f"- Duration: {record.duration_seconds:.0f}s",
+        f"- Language: {record.language}",
+        f"- Model: {record.model}",
+    ]
+    if record.tags:
+        lines.append(f"- Tags: {', '.join(record.tags)}")
+    lines.extend(["", "## Summary", ""])
+    lines.extend(record.summary or ["No summary available yet."])
+    lines.extend(["", "## Transcript", ""])
+    if record.segments:
+        for segment in record.segments:
+            lines.append(f"**{segment.get('start_label', '00:00')}** {segment.get('text', '').strip()}")
+            lines.append("")
+    else:
+        lines.append(record.transcript_text)
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def json_export(record: TranscriptRecord) -> dict:
+    return asdict(record)
+
+
+def cleaned_transcript_text(record: TranscriptRecord) -> str:
+    import re
+
+    text = record.transcript_text
+    filler_patterns = [
+        r"\bähm\b",
+        r"\bäh\b",
+        r"\bum\b",
+        r"\buh\b",
+        r"\bsozusagen\b",
+    ]
+    for pattern in filler_patterns:
+        text = re.sub(pattern, "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+([,.!?;:])", r"\1", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip() + "\n"
 
 
 def delete_record(record_id: str) -> bool:
