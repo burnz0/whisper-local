@@ -360,17 +360,26 @@ body::before {
 .library-card__body {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .library-card__body strong {
+  display: -webkit-box;
   font-size: 0.92rem;
   font-weight: 600;
   letter-spacing: -0.01em;
+  line-height: 1.18;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .library-card__body small {
+  overflow: hidden;
   color: var(--muted);
   font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .library-delete {
@@ -407,6 +416,10 @@ body::before {
   min-height: 0;
 }
 
+.composer:has(.upload-card.is-compact) {
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+}
+
 .upload-card,
 .detail-panel {
   border-radius: 24px;
@@ -427,7 +440,7 @@ body::before {
 }
 
 .upload-card.is-compact {
-  padding: 12px 14px;
+  padding: 12px;
 }
 
 .upload-card.is-compact .upload-icon {
@@ -439,20 +452,28 @@ body::before {
   text-align: left;
 }
 
+.upload-card.is-compact h2 {
+  font-size: 1rem;
+}
+
 .upload-card.is-compact .transcribe-form {
-  gap: 10px;
+  gap: 8px;
 }
 
 .upload-card.is-compact .settings-card {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 12px;
+  grid-template-columns: 1fr;
+  gap: 8px;
   align-items: end;
 }
 
 .upload-card.is-compact .settings-card h3,
 .upload-card.is-compact .subtle {
   display: none;
+}
+
+.upload-card.is-compact #selected-file-name {
+  text-align: left;
 }
 
 .inline-field span {
@@ -560,6 +581,10 @@ body::before {
   gap: 14px;
 }
 
+.upload-card.is-compact .settings-card {
+  padding: 10px;
+}
+
 .settings-card label {
   display: grid;
   gap: 8px;
@@ -603,6 +628,11 @@ input[type="search"] {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+.title-row h2 {
+  overflow-wrap: anywhere;
 }
 
 .meta-row {
@@ -633,6 +663,7 @@ input[type="search"] {
   height: 40px;
   cursor: pointer;
   text-decoration: none;
+  flex: 0 0 auto;
 }
 
 .icon-button--danger:hover {
@@ -892,6 +923,17 @@ input[type="search"] {
   flex: 0 0 auto;
 }
 
+.player-now {
+  flex: 0 1 260px;
+  min-width: 160px;
+  overflow: hidden;
+  color: rgba(243, 245, 248, 0.86);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .player-button {
   width: 54px;
   height: 54px;
@@ -1093,8 +1135,18 @@ body.is-playing .waveform span:nth-child(4n) {
 }
 
 @media (max-width: 1180px) {
+  body {
+    overflow: auto;
+  }
+
+  .app-shell {
+    height: auto;
+    min-height: 100dvh;
+  }
+
   .app-shell,
-  .composer {
+  .composer,
+  .composer:has(.upload-card.is-compact) {
     grid-template-columns: 1fr;
   }
 
@@ -1109,11 +1161,15 @@ body.is-playing .waveform span:nth-child(4n) {
   }
 
   .detail-panel {
-    min-height: auto;
+    min-height: 680px;
   }
 
   .segment-list {
     max-height: none;
+  }
+
+  .local-note {
+    margin-top: 0;
   }
 }
 
@@ -1129,6 +1185,19 @@ body.is-playing .waveform span:nth-child(4n) {
   .player-bar {
     padding-left: 18px;
     padding-right: 18px;
+  }
+
+  .detail-header {
+    flex-direction: column;
+  }
+
+  .actions {
+    align-self: stretch;
+    justify-content: flex-end;
+  }
+
+  .upload-card.is-compact .settings-card {
+    grid-template-columns: 1fr 1fr;
   }
 
   .search-box {
@@ -1148,6 +1217,11 @@ body.is-playing .waveform span:nth-child(4n) {
     gap: 14px;
     align-items: center;
     flex-wrap: wrap;
+  }
+
+  .player-now {
+    flex: 1 1 calc(100% - 160px);
+    min-width: 0;
   }
 
   .player-button {
@@ -1176,6 +1250,37 @@ body.is-playing .waveform span:nth-child(4n) {
 
   .player-center {
     width: 100%;
+    flex: 1 0 100%;
     order: 3;
+  }
+}
+
+@media (max-width: 460px) {
+  .app-shell {
+    padding: 8px;
+  }
+
+  .sidebar,
+  .workspace,
+  .upload-card,
+  .detail-panel {
+    border-radius: 18px;
+  }
+
+  .upload-card.is-compact .settings-card {
+    grid-template-columns: 1fr;
+  }
+
+  .segment {
+    grid-template-columns: 38px 1fr;
+  }
+
+  .player-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .player-now {
+    flex-basis: 100%;
   }
 }

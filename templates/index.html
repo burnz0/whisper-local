@@ -86,9 +86,9 @@
         </header>
         <div class="library-list">
           {% for record in records %}
-          <div class="library-row" data-record-row="{{ record.id }}">
-            <a class="library-card {% if selected and selected.id == record.id %}is-active{% endif %}" href="{{ url_for('transcript_detail', record_id=record.id) }}" data-record-link="{{ record.id }}">
-              <div class="library-card__icon">▶</div>
+          <div class="library-row" data-record-row="{{ record.id }}" title="{{ record.title }}">
+            <a class="library-card {% if selected and selected.id == record.id %}is-active{% endif %}" href="{{ url_for('transcript_detail', record_id=record.id) }}" data-record-link="{{ record.id }}" title="{{ record.title }}">
+              <div class="library-card__icon" aria-hidden="true">▶</div>
               <div class="library-card__body">
                 <strong data-record-title="{{ record.id }}">{{ record.title }}</strong>
                 <small>{{ record.created_at[11:16] }} • {{ "%.0f"|format(record.duration_seconds) }}s • {{ languages[record.language] }}</small>
@@ -117,7 +117,9 @@
         <div class="upload-card {% if selected %}is-compact{% endif %}" id="upload-card">
           <div class="upload-icon">⌂</div>
           <h2>{% if selected %}Add audio{% else %}Upload audio{% endif %}</h2>
-          <p>{% if selected %}Drop in another recording or adjust defaults.{% else %}Choose a file or drag it here.{% endif %}</p>
+          {% if not selected %}
+          <p>Choose a file or drag it here.</p>
+          {% endif %}
           <form action="{{ url_for('transcribe_route') }}" method="post" enctype="multipart/form-data" class="transcribe-form" id="transcribe-form">
             <label class="file-picker">
               <input type="file" id="audio-file-input" name="audio_file" accept="{{ upload_accept }}" required>
@@ -157,7 +159,9 @@
             <div>
               <div class="title-row">
                 <h2 id="record-title">{{ selected.title }}</h2>
-                <button class="icon-button" id="rename-button" data-record-id="{{ selected.id }}" title="Rename title">✎</button>
+                <button class="icon-button" id="rename-button" data-record-id="{{ selected.id }}" title="Rename title" aria-label="Rename title">
+                  <span aria-hidden="true">✎</span>
+                </button>
               </div>
               <div class="meta-row">
                 <span>{{ selected.created_at[:10] }}</span>
@@ -168,9 +172,15 @@
               </div>
             </div>
             <div class="actions">
-              <a class="icon-button" href="{{ url_for('download_text', record_id=selected.id) }}" title="Download text">⇩</a>
-              <button class="icon-button" id="copy-button" title="Copy transcript">⧉</button>
-              <button class="icon-button icon-button--danger" id="delete-button" title="Delete transcript">✕</button>
+              <a class="icon-button" href="{{ url_for('download_text', record_id=selected.id) }}" title="Download text" aria-label="Download text">
+                <span aria-hidden="true">⇩</span>
+              </a>
+              <button class="icon-button" id="copy-button" title="Copy transcript" aria-label="Copy transcript">
+                <span aria-hidden="true">⧉</span>
+              </button>
+              <button class="icon-button icon-button--danger" id="delete-button" title="Delete transcript" aria-label="Delete transcript">
+                <span aria-hidden="true">✕</span>
+              </button>
             </div>
           </header>
 
@@ -187,7 +197,9 @@
             <div class="segment-list" id="segment-list">
               {% for segment in selected.segments %}
               <article class="segment" data-segment-id="{{ segment.id }}" data-start="{{ segment.start }}" data-end="{{ segment.end }}" data-text="{{ segment.text|lower }}">
-                <button class="segment-play" data-start="{{ segment.start }}">▶</button>
+                <button class="segment-play" data-start="{{ segment.start }}" title="Play from {{ segment.start_label }}" aria-label="Play from {{ segment.start_label }}">
+                  <span aria-hidden="true">▶</span>
+                </button>
                 <div class="segment-time">{{ segment.start_label }}</div>
                 <p>{{ segment.text }}</p>
               </article>
@@ -220,9 +232,12 @@
           <footer class="player-bar">
             <div class="player-main">
               <div class="player-left">
-                <button class="player-button" id="player-toggle">▶</button>
+                <button class="player-button" id="player-toggle" title="Play or pause" aria-label="Play or pause">
+                  <span aria-hidden="true">▶</span>
+                </button>
                 <span class="time-pill" id="current-time">00:00</span>
               </div>
+              <div class="player-now" id="player-now" aria-live="polite">{{ selected.title }}</div>
               <div class="player-center">
                 <div class="waveform" aria-hidden="true">
                   {% for i in range(56) %}

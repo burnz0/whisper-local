@@ -5,6 +5,7 @@
   const currentTime = document.getElementById("current-time");
   const durationTime = document.getElementById("duration-time");
   const progress = document.getElementById("audio-progress");
+  const playerNow = document.getElementById("player-now");
   const search = document.getElementById("segment-search");
   const tabs = document.querySelectorAll(".tab");
   const panes = document.querySelectorAll(".pane");
@@ -82,6 +83,12 @@
       row.classList.toggle("is-active", isActive);
       if (isActive) activeRow = row;
     });
+    if (activeRow && playerNow) {
+      const textEl = activeRow.querySelector("p");
+      playerNow.textContent = textEl ? textEl.textContent.trim() : "";
+    } else if (!activeRow && playerNow && titleEl) {
+      playerNow.textContent = titleEl.textContent || "";
+    }
     const isFiltering = Boolean(search && search.value.trim());
     if (activeRow && activeRow !== lastActiveSegment && !isFiltering) {
       activeRow.scrollIntoView({ block: "nearest", behavior: "smooth" });

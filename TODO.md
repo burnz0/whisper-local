@@ -2,25 +2,6 @@
 
 Prioritized backlog based on the current app, screenshot review, and `VISION.md`.
 
-## P2 - UI Polish From Screenshot Review
-
-- [ ] Reduce visual weight in the left upload panel once a transcript is selected.
-  - Make "Add audio" more compact.
-  - Keep the transcript review area dominant.
-- [ ] Improve long title handling in the history sidebar.
-  - Clamp titles consistently.
-  - Add full title on hover.
-  - Consider a denser list mode.
-- [ ] Replace text/symbol buttons with clearer icons and accessible labels.
-  - Rename, download, copy, delete, play, and close actions.
-  - Keep visible tooltips for ambiguous controls.
-- [ ] Make the bottom player feel connected to the active transcript.
-  - Ensure active segment scrolls into view during playback.
-  - Show current segment text or title near the player on narrow screens.
-- [ ] Tighten responsive behavior.
-  - Check desktop, tablet, and mobile layouts.
-  - Make sure the fixed-height shell does not trap content on small screens.
-
 ## P3 - Architecture And Maintainability
 
 - [ ] Split `app.py` into focused modules.
