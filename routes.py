@@ -8,6 +8,7 @@ from pathlib import Path
 from flask import Response, abort, jsonify, redirect, render_template, request, send_from_directory, url_for
 
 from config import DATA_DIR, LANGUAGES, MODELS, SETTINGS_PATH, SUMMARY_MODEL_NAME, SUMMARY_PROVIDERS, TRANSCRIPT_DIR, UPLOAD_ACCEPT, UPLOAD_DIR
+from errors import friendly_transcription_error
 from jobs import get_job, start_transcription_job
 from storage import (
     delete_record,
@@ -85,19 +86,6 @@ def build_local_info() -> list[dict[str, str]]:
         {"label": "Summary model cache", "value": f"{hf_cache} ({capped_dir_size(hf_cache)})"},
         {"label": "Disk available", "value": format_bytes(usage.free)},
     ]
-
-
-def friendly_transcription_error(exc: Exception) -> tuple[str, int]:
-    if isinstance(exc, ValueError):
-        return str(exc), 400
-
-    message = str(exc).strip()
-    lowered = message.lower()
-    if isinstance(exc, FileNotFoundError) or "ffmpeg" in lowered:
-        return "FFmpeg is required to read this audio file. Install ffmpeg and try again.", 500
-    if "model" in lowered or "whisper" in lowered:
-        return f"Whisper could not process this file: {message or exc.__class__.__name__}", 500
-    return f"Transcription failed: {message or exc.__class__.__name__}", 500
 
 
 def render_workspace(

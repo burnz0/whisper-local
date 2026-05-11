@@ -60,11 +60,20 @@ class BackendBehaviorTest(unittest.TestCase):
     def test_friendly_transcription_errors(self):
         unsupported, unsupported_status = app.friendly_transcription_error(ValueError("This file format is not supported yet."))
         ffmpeg, ffmpeg_status = app.friendly_transcription_error(FileNotFoundError("ffmpeg"))
+        cuda, cuda_status = app.friendly_transcription_error(RuntimeError("CUDA out of memory"))
+        corrupt, corrupt_status = app.friendly_transcription_error(RuntimeError("Invalid data found when processing input"))
+        model, model_status = app.friendly_transcription_error(RuntimeError("Whisper model unavailable"))
 
-        self.assertEqual(unsupported, "This file format is not supported yet.")
+        self.assertIn("format", unsupported)
         self.assertEqual(unsupported_status, 400)
         self.assertIn("FFmpeg", ffmpeg)
         self.assertEqual(ffmpeg_status, 500)
+        self.assertIn("GPU", cuda)
+        self.assertEqual(cuda_status, 500)
+        self.assertIn("decoded", corrupt)
+        self.assertEqual(corrupt_status, 400)
+        self.assertIn("Whisper", model)
+        self.assertEqual(model_status, 500)
 
     def test_invalid_settings_json_is_backed_up_and_restored(self):
         with tempfile.TemporaryDirectory() as temp_dir:

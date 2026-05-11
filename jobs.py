@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
+from errors import friendly_transcription_error
 from storage import create_transcript_from_audio
 from transcription import processing_mode_label
 
@@ -64,7 +65,8 @@ def _run_job(job_id: str, audio_path: Path, transcript_id: str, source_name: str
         record = create_transcript_from_audio(audio_path, transcript_id, source_name, model_name, language)
     except Exception as exc:
         logger.exception("transcription job failed job=%s", job_id)
-        _update_job(job_id, status="failed", error=str(exc))
+        error, _status_code = friendly_transcription_error(exc)
+        _update_job(job_id, status="failed", error=error)
         return
     _update_job(job_id, status="complete", record_id=record.id)
     logger.info("transcription job complete job=%s record=%s", job_id, record.id)
