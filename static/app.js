@@ -27,7 +27,11 @@
   const transcribeStatus = document.getElementById("transcribe-status");
   const fileInput = document.getElementById("audio-file-input");
   const uploadCard = document.getElementById("upload-card");
+  const uploadPanel = document.getElementById("upload-panel");
+  const contextBackdrop = document.getElementById("context-backdrop");
+  const closeUploadPanel = document.getElementById("close-upload-panel");
   const fileNameLabel = document.getElementById("selected-file-name");
+  const openUploadButtons = document.querySelectorAll("[data-open-upload]");
   const searchCount = document.getElementById("segment-search-count");
   const sidebarNavButtons = document.querySelectorAll("[data-sidebar-target]");
   const sidebarPanels = document.querySelectorAll(".sidebar-panel");
@@ -63,7 +67,11 @@
         }
         if (jobStatusMessage) {
           jobStatusMessage.textContent =
-            job.status === "failed" ? job.error || "Transcription failed." : job.status === "complete" ? "Opening transcript..." : `${job.source_name} is ${job.status}.`;
+            job.status === "failed"
+              ? job.error || "Transcription failed."
+              : job.status === "complete"
+                ? "Opening transcript..."
+                : `Running locally with ${job.model}. ${job.source_name} is ${job.status}; no cloud upload occurs.`;
         }
         if (job.status === "complete" && payload.redirect_url) {
           window.location.href = payload.redirect_url;
@@ -320,9 +328,40 @@
     search.addEventListener("input", renderSearch);
   }
 
+  const setUploadPanelOpen = (isOpen) => {
+    if (!uploadPanel || !contextBackdrop) return;
+    uploadPanel.hidden = !isOpen;
+    contextBackdrop.hidden = !isOpen;
+    uploadPanel.classList.toggle("is-open", isOpen);
+    if (isOpen && fileInput) {
+      window.setTimeout(() => fileInput.focus(), 80);
+    }
+  };
+
+  openUploadButtons.forEach((button) => {
+    button.addEventListener("click", () => setUploadPanelOpen(true));
+  });
+
+  if (closeUploadPanel) {
+    closeUploadPanel.addEventListener("click", () => setUploadPanelOpen(false));
+  }
+
+  if (contextBackdrop) {
+    contextBackdrop.addEventListener("click", () => setUploadPanelOpen(false));
+  }
+
   if (fileInput && fileNameLabel) {
     const renderFileName = (file) => {
       fileNameLabel.textContent = file ? `Selected: ${file.name}` : "Supported formats: ogg, mp3, wav, m4a, flac, webm";
+    };
+
+    const assignFile = (file) => {
+      if (!file) return;
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      fileInput.files = transfer.files;
+      renderFileName(file);
+      setUploadPanelOpen(true);
     };
 
     fileInput.addEventListener("change", () => {
@@ -346,13 +385,37 @@
 
       uploadCard.addEventListener("drop", (event) => {
         const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
-        if (!file) return;
-        const transfer = new DataTransfer();
-        transfer.items.add(file);
-        fileInput.files = transfer.files;
-        renderFileName(file);
+        assignFile(file);
       });
     }
+
+    let dragDepth = 0;
+    document.addEventListener("dragenter", (event) => {
+      if (!event.dataTransfer || !Array.from(event.dataTransfer.types).includes("Files")) return;
+      dragDepth += 1;
+      document.body.classList.add("is-dragging-file");
+      setUploadPanelOpen(true);
+    });
+
+    document.addEventListener("dragover", (event) => {
+      if (!event.dataTransfer || !Array.from(event.dataTransfer.types).includes("Files")) return;
+      event.preventDefault();
+    });
+
+    document.addEventListener("dragleave", () => {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) {
+        document.body.classList.remove("is-dragging-file");
+      }
+    });
+
+    document.addEventListener("drop", (event) => {
+      if (!event.dataTransfer || !Array.from(event.dataTransfer.types).includes("Files")) return;
+      event.preventDefault();
+      dragDepth = 0;
+      document.body.classList.remove("is-dragging-file");
+      assignFile(event.dataTransfer.files && event.dataTransfer.files[0]);
+    });
   }
 
   if (transcribeForm && transcribeButton) {
@@ -365,9 +428,9 @@
       transcribeForm.dataset.submitting = "true";
       transcribeForm.classList.add("is-submitting");
       transcribeButton.disabled = true;
-      transcribeButton.textContent = "Transcribing...";
+      transcribeButton.textContent = "Transcribing locally...";
       if (transcribeStatus) {
-        transcribeStatus.textContent = file ? `Transcribing ${file.name}.` : "Transcribing audio.";
+        transcribeStatus.textContent = file ? `Running local transcription for ${file.name}. No upload occurs.` : "Running local transcription.";
       }
     });
   }
@@ -539,6 +602,12 @@
     const modalOpen = confirmModal && !confirmModal.hidden;
 
     if (modalOpen) return;
+
+    if (event.key === "Escape" && uploadPanel && !uploadPanel.hidden) {
+      event.preventDefault();
+      setUploadPanelOpen(false);
+      return;
+    }
 
     if (event.key === "/" && search && !isTyping) {
       event.preventDefault();

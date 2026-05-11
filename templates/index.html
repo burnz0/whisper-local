@@ -21,10 +21,10 @@
         </div>
       </div>
 
-      <a class="primary-action" href="{{ url_for('index') }}">
+      <button class="primary-action" type="button" data-open-upload>
         <span>+</span>
         New Transcription
-      </a>
+      </button>
 
       <nav class="nav" id="sidebar-nav">
         <button class="nav-item active" type="button" data-sidebar-target="history-panel">History</button>
@@ -119,52 +119,12 @@
           {% if job.status == "failed" %}Transcription failed{% elif job.status == "complete" %}Transcription complete{% else %}Transcribing audio{% endif %}
         </strong>
         <span id="job-status-message">
-          {% if job.status == "failed" %}{{ job.error }}{% elif job.status == "complete" %}Opening transcript...{% else %}{{ job.source_name }} is {{ job.status }}.{% endif %}
+          {% if job.status == "failed" %}{{ job.error }}{% elif job.status == "complete" %}Opening transcript...{% else %}Running locally with {{ job.model }}. {{ job.source_name }} is {{ job.status }}; no cloud upload occurs.{% endif %}
         </span>
       </div>
       {% endif %}
 
       <section class="composer">
-        <div class="upload-card {% if selected %}is-compact{% endif %}" id="upload-card">
-          <div class="upload-icon">⌂</div>
-          <h2>{% if selected %}Add audio{% else %}Upload audio{% endif %}</h2>
-          {% if not selected %}
-          <p>Choose a file or drag it here.</p>
-          {% endif %}
-          <form action="{{ url_for('transcribe_route') }}" method="post" enctype="multipart/form-data" class="transcribe-form" id="transcribe-form">
-            <label class="file-picker">
-              <input type="file" id="audio-file-input" name="audio_file" accept="{{ upload_accept }}" required>
-              <span>Choose file</span>
-            </label>
-            <small id="selected-file-name">Supported formats: ogg, mp3, wav, m4a, flac, webm</small>
-
-            <div class="settings-card" id="settings-card">
-              <h3>Model settings</h3>
-              <label class="inline-field">
-                <span>Model size</span>
-                <select name="model">
-                  {% for model in models %}
-                  <option value="{{ model }}" {% if model == default_model %}selected{% endif %}>{{ model|capitalize }}</option>
-                  {% endfor %}
-                </select>
-                <small class="field-hint">Tiny is fastest, Small is more accurate.</small>
-              </label>
-              <label class="inline-field">
-                <span>Language</span>
-                <select name="language">
-                  {% for code, label in languages.items() %}
-                  <option value="{{ code }}" {% if code == default_language %}selected{% endif %}>{{ label }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-            </div>
-
-            <button type="submit" class="transcribe-button" id="transcribe-button">Transcribe</button>
-            <p class="transcribe-status" id="transcribe-status" aria-live="polite"></p>
-            <p class="subtle">Transcription can take a few minutes depending on file length.</p>
-          </form>
-        </div>
-
         <div class="detail-panel">
           {% if selected %}
           <header class="detail-header">
@@ -289,11 +249,73 @@
           </footer>
           {% else %}
           <div class="detail-empty">
+            <div class="empty-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 12h2M8 8v8M12 4v16M16 8v8M20 12h0" />
+              </svg>
+            </div>
             <h2>No transcript selected</h2>
-            <p>Upload an audio file on the left to get started.</p>
+            <p>Start with an audio file. Whisper Local will process it on this device and keep the saved transcript in your local library.</p>
+            <button class="primary-action" type="button" data-open-upload>Upload audio</button>
           </div>
           {% endif %}
         </div>
+
+        <div class="context-backdrop" id="context-backdrop" {% if selected and not error %}hidden{% endif %}></div>
+        <aside class="context-panel {% if not selected or error %}is-open{% endif %}" id="upload-panel" aria-labelledby="upload-panel-title" {% if selected and not error %}hidden{% endif %}>
+          <div class="context-panel__header">
+            <div>
+              <span class="eyebrow">Local ingest</span>
+              <h2 id="upload-panel-title">Add audio</h2>
+            </div>
+            <button class="icon-button" type="button" id="close-upload-panel" title="Close panel" aria-label="Close panel">
+              <span aria-hidden="true">✕</span>
+            </button>
+          </div>
+          <div class="upload-card" id="upload-card">
+            <div class="upload-icon">⌂</div>
+            <h3>Drop audio here</h3>
+            <p>Files never leave your device. The selected Whisper model runs locally and saves the transcript to this workspace.</p>
+            <form action="{{ url_for('transcribe_route') }}" method="post" enctype="multipart/form-data" class="transcribe-form" id="transcribe-form">
+              <label class="file-picker">
+                <input type="file" id="audio-file-input" name="audio_file" accept="{{ upload_accept }}" required>
+                <span>Choose file</span>
+              </label>
+              <small id="selected-file-name">Supported formats: ogg, mp3, wav, m4a, flac, webm</small>
+
+              <div class="trust-list" aria-label="Local processing guarantees">
+                <span>Runs locally</span>
+                <span>No cloud upload</span>
+                <span>Saved in local library</span>
+              </div>
+
+              <div class="settings-card" id="settings-card">
+                <h3>Model settings</h3>
+                <label class="inline-field">
+                  <span>Model size</span>
+                  <select name="model">
+                    {% for model in models %}
+                    <option value="{{ model }}" {% if model == default_model %}selected{% endif %}>{{ model|capitalize }}</option>
+                    {% endfor %}
+                  </select>
+                  <small class="field-hint">Tiny is fastest, Small is more accurate.</small>
+                </label>
+                <label class="inline-field">
+                  <span>Language</span>
+                  <select name="language">
+                    {% for code, label in languages.items() %}
+                    <option value="{{ code }}" {% if code == default_language %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </label>
+              </div>
+
+              <button type="submit" class="transcribe-button" id="transcribe-button">Transcribe locally</button>
+              <p class="transcribe-status" id="transcribe-status" aria-live="polite"></p>
+              <p class="subtle">You can keep reviewing existing transcripts while processing runs.</p>
+            </form>
+          </div>
+        </aside>
       </section>
     </main>
   </div>
@@ -313,6 +335,12 @@
     window.APP_JOB_STATE = {{ job|tojson }};
   </script>
   {% endif %}
+  <div class="drop-target" id="drop-target" aria-hidden="true">
+    <div>
+      <strong>Drop audio to transcribe locally</strong>
+      <p>Files stay on this device.</p>
+    </div>
+  </div>
   <div class="modal-backdrop" id="confirm-modal" hidden>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
       <div class="modal-copy">
