@@ -12,6 +12,7 @@ from errors import friendly_transcription_error
 from jobs import get_job, start_transcription_job
 from storage import (
     delete_record,
+    delete_all_records,
     get_record,
     json_export,
     load_library,
@@ -226,6 +227,11 @@ def register_routes(app) -> None:
         remaining = load_library()
         next_url = url_for("transcript_detail", record_id=remaining[0].id) if remaining else url_for("index")
         return jsonify({"ok": True, "redirect_url": next_url, "remaining_count": len(remaining)})
+
+    @app.post("/local-data/delete")
+    def delete_local_data_route():
+        deleted_count = delete_all_records()
+        return jsonify({"ok": True, "redirect_url": url_for("index"), "deleted_count": deleted_count})
 
     @app.post("/transcripts/<record_id>/tags")
     def tags_route(record_id: str):

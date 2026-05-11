@@ -412,3 +412,15 @@ def delete_record(record_id: str) -> bool:
         if path.exists():
             path.unlink()
     return True
+
+
+def delete_all_records() -> int:
+    records = load_library()
+    save_library([])
+    deleted_count = 0
+    for record in records:
+        for path in (record.audio_path, record.transcript_path):
+            if path.exists():
+                path.unlink()
+        deleted_count += 1
+    return deleted_count

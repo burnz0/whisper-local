@@ -162,6 +162,45 @@ class BackendBehaviorTest(unittest.TestCase):
             self.assertIn("# Original", markdown)
             self.assertNotIn("ähm", clean_text)
 
+    def test_delete_all_records_clears_library_and_saved_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            library_path = root / "library.json"
+            settings_path = root / "settings.json"
+            uploads_dir = root / "uploads"
+            transcripts_dir = root / "transcripts"
+            uploads_dir.mkdir()
+            transcripts_dir.mkdir()
+            (uploads_dir / "abc123.ogg").write_bytes(b"audio")
+            (transcripts_dir / "abc123.txt").write_text("Transcript", encoding="utf-8")
+            record = {
+                "id": "abc123",
+                "title": "Original",
+                "filename": "recording.ogg",
+                "stored_filename": "abc123.ogg",
+                "transcript_filename": "abc123.txt",
+                "created_at": "2026-05-11T12:00:00",
+                "model": "base",
+                "language": "de",
+                "duration_seconds": 12,
+                "transcript_text": "Hallo Welt.",
+                "summary": ["Hallo Welt."],
+                "summary_provider": "extractive",
+                "segments": [],
+            }
+            library_path.write_text(json.dumps([record], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            settings_path.write_text(json.dumps(app.DEFAULT_SETTINGS), encoding="utf-8")
+
+            with mock.patch.object(storage, "DATA_DIR", root), mock.patch.object(storage, "UPLOAD_DIR", uploads_dir), mock.patch.object(
+                storage, "TRANSCRIPT_DIR", transcripts_dir
+            ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path):
+                deleted_count = storage.delete_all_records()
+
+            self.assertEqual(deleted_count, 1)
+            self.assertEqual(json.loads(library_path.read_text(encoding="utf-8")), [])
+            self.assertFalse((uploads_dir / "abc123.ogg").exists())
+            self.assertFalse((transcripts_dir / "abc123.txt").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

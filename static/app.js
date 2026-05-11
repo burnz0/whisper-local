@@ -21,6 +21,7 @@
   const copyButton = document.getElementById("copy-button");
   const renameButton = document.getElementById("rename-button");
   const deleteButton = document.getElementById("delete-button");
+  const deleteLocalDataButton = document.getElementById("delete-local-data-button");
   const tagEditor = document.getElementById("tag-editor");
   const tagsInput = document.getElementById("tags-input");
   const refreshSummaryButton = document.getElementById("refresh-summary-button");
@@ -743,6 +744,22 @@
       await deleteRecord(recordId);
     });
   });
+
+  if (deleteLocalDataButton) {
+    deleteLocalDataButton.addEventListener("click", async () => {
+      const confirmed = await askForConfirmation({
+        title: "Delete saved transcripts?",
+        message: "This removes every saved transcript and uploaded audio file from this app's local data folder. Model caches and app settings stay in place.",
+        confirmLabel: "Delete all"
+      });
+      if (!confirmed) return;
+      const response = await fetch("/local-data/delete", { method: "POST" });
+      const payload = await response.json();
+      if (payload.ok) {
+        window.location.href = payload.redirect_url;
+      }
+    });
+  }
 
   if (refreshSummaryButton && state) {
     const setSummaryState = (status, message) => {
