@@ -994,7 +994,16 @@ input[type="text"]:focus,
     transform 160ms ease;
 }
 
-.segment-edit {
+.segment-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.segment-edit,
+.segment-flag {
   min-height: 30px;
   border-radius: var(--radius-control);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -1006,9 +1015,16 @@ input[type="text"]:focus,
   cursor: pointer;
 }
 
-.segment-edit:hover {
+.segment-edit:hover,
+.segment-flag:hover {
   color: var(--text);
   background: rgba(255, 255, 255, 0.07);
+}
+
+.segment-flag[aria-pressed="true"] {
+  border-color: rgba(82, 207, 125, 0.18);
+  background: rgba(82, 207, 125, 0.12);
+  color: var(--green);
 }
 
 .segment:last-child {
@@ -1039,6 +1055,19 @@ input[type="text"]:focus,
   box-shadow:
     inset 3px 0 0 rgba(82, 207, 125, 0.82),
     inset 0 0 0 1px rgba(82, 207, 125, 0.16);
+}
+
+.segment.is-highlighted {
+  background: rgba(82, 207, 125, 0.055);
+}
+
+.segment.is-bookmarked .segment-time::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--green);
 }
 
 .segment-play {
@@ -1107,7 +1136,8 @@ input[type="text"]:focus,
   line-height: 1.42;
 }
 
-.segment-list.is-compact .segment-edit {
+.segment-list.is-compact .segment-edit,
+.segment-list.is-compact .segment-flag {
   min-height: 28px;
   font-size: 0.74rem;
 }

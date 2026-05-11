@@ -23,6 +23,7 @@ from storage import (
     save_upload,
     cleaned_transcript_text,
     update_record_tags,
+    update_segment_flags,
     update_segment_text,
 )
 from summaries import (
@@ -286,6 +287,20 @@ def register_routes(app) -> None:
         if record is None:
             return jsonify({"ok": False, "error": "Record or segment not found."}), 404
         return jsonify({"ok": True, "transcript_text": record.transcript_text})
+
+    @app.post("/transcripts/<record_id>/segments/<int:segment_id>/flags")
+    def segment_flags_route(record_id: str, segment_id: int):
+        payload = request.get_json(silent=True) or {}
+        record = update_segment_flags(
+            record_id,
+            segment_id,
+            bookmarked=payload.get("bookmarked") if "bookmarked" in payload else None,
+            highlighted=payload.get("highlighted") if "highlighted" in payload else None,
+        )
+        if record is None:
+            return jsonify({"ok": False, "error": "Record or segment not found."}), 404
+        segment = next((item for item in record.segments if int(item.get("id", -1)) == segment_id), {})
+        return jsonify({"ok": True, "segment": segment})
 
     @app.post("/settings")
     def settings_route():

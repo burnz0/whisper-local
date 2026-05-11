@@ -215,13 +215,17 @@
           <section class="pane is-active" id="transcript-pane">
             <div class="segment-list" id="segment-list">
               {% for segment in selected.segments %}
-              <article class="segment" data-segment-id="{{ segment.id }}" data-start="{{ segment.start }}" data-end="{{ segment.end }}" data-text="{{ segment.text|lower }}">
+              <article class="segment {% if segment.highlighted %}is-highlighted{% endif %} {% if segment.bookmarked %}is-bookmarked{% endif %}" data-segment-id="{{ segment.id }}" data-start="{{ segment.start }}" data-end="{{ segment.end }}" data-text="{{ segment.text|lower }}" data-bookmarked="{{ 'true' if segment.bookmarked else 'false' }}" data-highlighted="{{ 'true' if segment.highlighted else 'false' }}">
                 <button class="segment-play" data-start="{{ segment.start }}" title="Play from {{ segment.start_label }}" aria-label="Play from {{ segment.start_label }}">
                   <span aria-hidden="true">▶</span>
                 </button>
                 <div class="segment-time">{{ segment.start_label }}</div>
                 <p>{{ segment.text }}</p>
-                <button class="segment-edit" type="button" data-edit-segment="{{ segment.id }}">Edit</button>
+                <div class="segment-tools">
+                  <button class="segment-flag" type="button" data-segment-flag="highlighted" aria-pressed="{{ 'true' if segment.highlighted else 'false' }}">Highlight</button>
+                  <button class="segment-flag" type="button" data-segment-flag="bookmarked" aria-pressed="{{ 'true' if segment.bookmarked else 'false' }}">Bookmark</button>
+                  <button class="segment-edit" type="button" data-edit-segment="{{ segment.id }}">Edit</button>
+                </div>
               </article>
               {% endfor %}
               {% if not selected.segments %}

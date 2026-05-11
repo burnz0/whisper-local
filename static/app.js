@@ -719,6 +719,41 @@
     });
   });
 
+  document.querySelectorAll("[data-segment-flag]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!state) return;
+      const segment = button.closest(".segment");
+      if (!segment) return;
+      const flag = button.dataset.segmentFlag;
+      const nextValue = button.getAttribute("aria-pressed") !== "true";
+      button.disabled = true;
+      try {
+        const response = await fetch(`/transcripts/${state.recordId}/segments/${segment.dataset.segmentId}/flags`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ [flag]: nextValue })
+        });
+        const payload = await response.json();
+        if (!payload.ok) throw new Error(payload.error || "Segment flag update failed.");
+        const segmentPayload = payload.segment || {};
+        const isBookmarked = Boolean(segmentPayload.bookmarked);
+        const isHighlighted = Boolean(segmentPayload.highlighted);
+        segment.dataset.bookmarked = String(isBookmarked);
+        segment.dataset.highlighted = String(isHighlighted);
+        segment.classList.toggle("is-bookmarked", isBookmarked);
+        segment.classList.toggle("is-highlighted", isHighlighted);
+        segment.querySelectorAll("[data-segment-flag]").forEach((flagButton) => {
+          const isActive = flagButton.dataset.segmentFlag === "bookmarked" ? isBookmarked : isHighlighted;
+          flagButton.setAttribute("aria-pressed", String(isActive));
+        });
+      } catch (error) {
+        console.error(error);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+
   const deleteRecord = async (recordId) => {
     const response = await fetch(`/transcripts/${recordId}/delete`, { method: "POST" });
     const payload = await response.json();

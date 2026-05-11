@@ -181,7 +181,15 @@ def record_from_payload(item: dict) -> TranscriptRecord:
     transcript_id = str(item.get("id") or uuid.uuid4().hex[:12])
     language = str(item.get("language", DEFAULT_LANGUAGE))
     model = str(item.get("model", DEFAULT_MODEL))
-    segments = item.get("segments") if isinstance(item.get("segments"), list) else []
+    raw_segments = item.get("segments") if isinstance(item.get("segments"), list) else []
+    segments = []
+    for segment in raw_segments:
+        if not isinstance(segment, dict):
+            continue
+        next_segment = dict(segment)
+        next_segment["bookmarked"] = bool(next_segment.get("bookmarked", False))
+        next_segment["highlighted"] = bool(next_segment.get("highlighted", False))
+        segments.append(next_segment)
     summary = item.get("summary") if isinstance(item.get("summary"), list) else []
     tags = item.get("tags") if isinstance(item.get("tags"), list) else []
 
@@ -353,6 +361,27 @@ def update_segment_text(record_id: str, segment_id: int, text: str) -> Transcrip
     return updated_record
 
 
+def update_segment_flags(record_id: str, segment_id: int, *, bookmarked: bool | None = None, highlighted: bool | None = None) -> TranscriptRecord | None:
+    records = load_library()
+    updated_record = None
+    for record in records:
+        if record.id != record_id:
+            continue
+        for segment in record.segments:
+            if int(segment.get("id", -1)) == segment_id:
+                if bookmarked is not None:
+                    segment["bookmarked"] = bookmarked
+                if highlighted is not None:
+                    segment["highlighted"] = highlighted
+                updated_record = record
+                break
+        break
+    if updated_record is None:
+        return None
+    save_library(records)
+    return updated_record
+
+
 def markdown_export(record: TranscriptRecord) -> str:
     lines = [
         f"# {record.title}",
@@ -369,7 +398,13 @@ def markdown_export(record: TranscriptRecord) -> str:
     lines.extend(["", "## Transcript", ""])
     if record.segments:
         for segment in record.segments:
-            lines.append(f"**{segment.get('start_label', '00:00')}** {segment.get('text', '').strip()}")
+            flags = []
+            if segment.get("bookmarked"):
+                flags.append("bookmarked")
+            if segment.get("highlighted"):
+                flags.append("highlighted")
+            flag_label = f" _{', '.join(flags)}_" if flags else ""
+            lines.append(f"**{segment.get('start_label', '00:00')}**{flag_label} {segment.get('text', '').strip()}")
             lines.append("")
     else:
         lines.append(record.transcript_text)
