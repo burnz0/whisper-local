@@ -326,10 +326,24 @@
                 <span class="player-now__time" id="player-now-time"></span>
               </div>
               <div class="player-center">
-                <div class="waveform" aria-hidden="true">
+                <div class="waveform" id="waveform" aria-label="Transcript timing waveform">
+                  {% if selected.segments %}
+                  {% for segment in selected.segments %}
+                  {% set segment_duration = (segment.end|float) - (segment.start|float) %}
+                  <button
+                    type="button"
+                    class="waveform-segment"
+                    data-wave-start="{{ segment.start }}"
+                    data-wave-end="{{ segment.end }}"
+                    aria-label="Seek to {{ segment.start_label }}"
+                    style="--wave-grow: {{ '%.2f'|format(segment_duration if segment_duration > 0 else 0.2) }}; --wave-height: {{ 14 + (((segment.text|length) + loop.index * 7) % 28) }}px"
+                  ></button>
+                  {% endfor %}
+                  {% else %}
                   {% for i in range(56) %}
                   <span style="height: {{ 14 + ((i * 11) % 28) }}px"></span>
                   {% endfor %}
+                  {% endif %}
                 </div>
                 <input
                   type="range"

@@ -6,6 +6,7 @@
   const currentTime = document.getElementById("current-time");
   const durationTime = document.getElementById("duration-time");
   const progress = document.getElementById("audio-progress");
+  const waveformSegments = Array.from(document.querySelectorAll("[data-wave-start]"));
   const playerNow = document.getElementById("player-now");
   const playerNowText = document.getElementById("player-now-text");
   const playerNowTime = document.getElementById("player-now-time");
@@ -267,6 +268,11 @@
 
   const syncActiveSegment = (timeSeconds) => {
     let activeRow = null;
+    waveformSegments.forEach((bar) => {
+      const start = Number(bar.dataset.waveStart || 0);
+      const end = Number(bar.dataset.waveEnd || 0);
+      bar.classList.toggle("is-active", timeSeconds >= start && timeSeconds < end);
+    });
     segmentRows.forEach((row) => {
       const start = Number(row.dataset.start || 0);
       const end = Number(row.dataset.end || 0);
@@ -402,6 +408,15 @@
         syncActiveSegment(audio.currentTime);
       });
     }
+
+    waveformSegments.forEach((bar) => {
+      bar.addEventListener("click", () => {
+        audio.currentTime = Number(bar.dataset.waveStart || 0);
+        currentTime.textContent = formatTime(audio.currentTime);
+        syncProgress();
+        syncActiveSegment(audio.currentTime);
+      });
+    });
 
     document.querySelectorAll(".segment-play").forEach((button) => {
       button.addEventListener("click", () => {

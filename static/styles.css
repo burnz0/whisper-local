@@ -1540,15 +1540,18 @@ textarea:focus,
   font-size: 1rem;
 }
 
-body.is-playing .waveform span {
+body.is-playing .waveform span,
+body.is-playing .waveform-segment {
   animation: pulse-bars 1.2s ease-in-out infinite alternate;
 }
 
-body.is-playing .waveform span:nth-child(3n) {
+body.is-playing .waveform span:nth-child(3n),
+body.is-playing .waveform-segment:nth-child(3n) {
   animation-duration: 1s;
 }
 
-body.is-playing .waveform span:nth-child(4n) {
+body.is-playing .waveform span:nth-child(4n),
+body.is-playing .waveform-segment:nth-child(4n) {
   animation-duration: 1.45s;
 }
 
@@ -1629,15 +1632,39 @@ body.is-playing .player-button {
   padding: 0 4px;
 }
 
-.waveform span {
-  width: 4px;
+.waveform span,
+.waveform-segment {
+  flex: var(--wave-grow, 0) 1 4px;
+  min-width: 4px;
+  height: var(--wave-height, 24px);
   border-radius: var(--radius-pill);
+  border: 0;
   background: linear-gradient(
     180deg,
     rgba(120, 255, 166, 0.95),
     rgba(255, 255, 255, 0.1)
   );
   opacity: 0.82;
+}
+
+.waveform-segment {
+  cursor: pointer;
+  padding: 0;
+}
+
+.waveform-segment:hover,
+.waveform-segment.is-active {
+  opacity: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(82, 207, 125, 0.45)
+  );
+}
+
+.waveform-segment:focus-visible {
+  outline: 2px solid rgba(82, 207, 125, 0.72);
+  outline-offset: 2px;
 }
 
 #audio-progress {
