@@ -13,6 +13,7 @@
   const search = document.getElementById("segment-search");
   const searchPrevious = document.getElementById("segment-search-prev");
   const searchNext = document.getElementById("segment-search-next");
+  const searchScopeButtons = document.querySelectorAll("[data-search-scope]");
   const tabs = document.querySelectorAll(".tab");
   const panes = document.querySelectorAll(".pane");
   const densityButtons = document.querySelectorAll("[data-density]");
@@ -56,6 +57,7 @@
   let lastActiveSegment = null;
   let followPlayback = window.localStorage.getItem("whisperLocal.followPlayback") !== "false";
   let transcriptDensity = window.localStorage.getItem("whisperLocal.transcriptDensity") || "comfortable";
+  let searchScope = window.localStorage.getItem("whisperLocal.searchScope") || "transcript";
   const formatTime = (seconds) => {
     const total = Math.max(0, Math.floor(seconds || 0));
     const mins = Math.floor(total / 60);
@@ -324,16 +326,31 @@
 
   if (search) {
     const allSegments = Array.from(document.querySelectorAll(".segment"));
+    const allSummaryCards = Array.from(document.querySelectorAll(".summary-card"));
     let searchMatches = [];
     let activeSearchIndex = -1;
     const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const clearHighlight = (segment) => {
-      const textEl = segment.querySelector("p");
+    const getSearchTextEl = (item) => item.querySelector("p") || item;
+    const getSearchItems = () => (searchScope === "summary" ? allSummaryCards : allSegments);
+    const getInactiveSearchItems = () => (searchScope === "summary" ? allSegments : allSummaryCards);
+    const clearHighlight = (item) => {
+      const textEl = getSearchTextEl(item);
       if (!textEl || textEl.dataset.originalText === undefined) return;
       textEl.textContent = textEl.dataset.originalText;
     };
     const clearActiveSearchHit = () => {
       allSegments.forEach((segment) => segment.classList.remove("is-search-active"));
+      allSummaryCards.forEach((card) => card.classList.remove("is-search-active"));
+    };
+    const renderSearchScope = () => {
+      searchScope = searchScope === "summary" ? "summary" : "transcript";
+      searchScopeButtons.forEach((button) => {
+        const isActive = button.dataset.searchScope === searchScope;
+        button.classList.toggle("is-active", isActive);
+        button.setAttribute("aria-pressed", String(isActive));
+      });
+      search.placeholder = searchScope === "summary" ? "Search summary..." : "Search transcript...";
+      window.localStorage.setItem("whisperLocal.searchScope", searchScope);
     };
     const updateSearchControls = () => {
       const hasMatches = searchMatches.length > 0;
@@ -343,7 +360,7 @@
         if (!search.value.trim()) {
           searchCount.textContent = "";
         } else if (hasMatches) {
-          searchCount.textContent = `${activeSearchIndex + 1} of ${searchMatches.length} matches`;
+          searchCount.textContent = `${activeSearchIndex + 1} of ${searchMatches.length} ${searchScope} matches`;
         } else {
           searchCount.textContent = "0 matches";
         }
@@ -367,8 +384,8 @@
       if (!searchMatches.length) return;
       focusSearchHit(activeSearchIndex + delta);
     };
-    const highlightMatch = (segment, query) => {
-      const textEl = segment.querySelector("p");
+    const highlightMatch = (item, query) => {
+      const textEl = getSearchTextEl(item);
       if (!textEl) return;
       const original = textEl.dataset.originalText || textEl.textContent;
       textEl.dataset.originalText = original;
@@ -395,16 +412,23 @@
       const query = search.value.trim().toLowerCase();
       searchMatches = [];
       clearActiveSearchHit();
-      allSegments.forEach((segment) => {
-        const textEl = segment.querySelector("p");
-        const haystack = (textEl && (textEl.dataset.originalText || textEl.textContent) || segment.textContent).toLowerCase();
+      getInactiveSearchItems().forEach((item) => {
+        item.hidden = false;
+        clearHighlight(item);
+      });
+      if (query) {
+        setActiveTab(searchScope === "summary" ? "summary-pane" : "transcript-pane");
+      }
+      getSearchItems().forEach((item) => {
+        const textEl = getSearchTextEl(item);
+        const haystack = (textEl && (textEl.dataset.originalText || textEl.textContent) || item.textContent).toLowerCase();
         const isMatch = !query || haystack.includes(query);
-        segment.hidden = !isMatch;
+        item.hidden = !isMatch;
         if (query && isMatch) {
-          searchMatches.push(segment);
-          highlightMatch(segment, query);
+          searchMatches.push(item);
+          highlightMatch(item, query);
         } else {
-          clearHighlight(segment);
+          clearHighlight(item);
         }
       });
       if (query && searchMatches.length) {
@@ -424,8 +448,16 @@
       event.preventDefault();
       moveSearchHit(event.shiftKey ? -1 : 1);
     });
+    searchScopeButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        searchScope = button.dataset.searchScope;
+        renderSearchScope();
+        renderSearch();
+      });
+    });
     if (searchPrevious) searchPrevious.addEventListener("click", () => moveSearchHit(-1));
     if (searchNext) searchNext.addEventListener("click", () => moveSearchHit(1));
+    renderSearchScope();
     updateSearchControls();
   }
 

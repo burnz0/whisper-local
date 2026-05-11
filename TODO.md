@@ -37,7 +37,7 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 
 - [x] Highlight transcript hits and show hit count.
 - [x] Add previous/next hit navigation.
-- [ ] Add transcript-only vs summary search scope.
+- [x] Add transcript-only vs summary search scope.
 - [ ] Add speaker/tag filters once speaker data exists.
 - [ ] Explore semantic search for local knowledge retrieval.
 
