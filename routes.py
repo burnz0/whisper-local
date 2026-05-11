@@ -56,6 +56,25 @@ def build_collections(records) -> list[dict[str, str]]:
     return [{"name": name, "count": str(counts[name])} for name in names]
 
 
+def build_tags(records) -> list[dict[str, str]]:
+    counts: dict[str, int] = {}
+    for record in records:
+        for tag in record.tags:
+            counts[tag] = counts.get(tag, 0) + 1
+    return [{"name": name, "count": str(counts[name])} for name in sorted(counts)]
+
+
+def build_speakers(record) -> list[str]:
+    if record is None:
+        return []
+    speakers = {
+        str(segment.get("speaker", "")).strip()
+        for segment in record.segments
+        if str(segment.get("speaker", "")).strip()
+    }
+    return sorted(speakers, key=str.lower)
+
+
 def format_bytes(size: int) -> str:
     value = float(max(size, 0))
     for unit in ("B", "KB", "MB", "GB"):
@@ -158,6 +177,8 @@ def render_workspace(
         local_info=build_local_info(),
         model_downloads=build_model_download_info(),
         collections=build_collections(records),
+        tag_filters=build_tags(records),
+        speakers=build_speakers(selected),
         upload_accept=UPLOAD_ACCEPT,
         settings=settings,
         error=error,

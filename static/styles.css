@@ -279,13 +279,15 @@ textarea:focus-visible {
   font-size: 0.82rem;
 }
 
-.collection-filter {
+.collection-filter,
+.tag-filter {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.collection-filter__button {
+.collection-filter__button,
+.tag-filter__button {
   min-height: 30px;
   display: inline-flex;
   align-items: center;
@@ -302,25 +304,30 @@ textarea:focus-visible {
   padding: 0 9px;
 }
 
-.collection-filter__button span {
+.collection-filter__button span,
+.tag-filter__button span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.collection-filter__button strong {
+.collection-filter__button strong,
+.tag-filter__button strong {
   color: rgba(219, 228, 240, 0.72);
   font-size: 0.72rem;
   font-weight: 780;
 }
 
 .collection-filter__button:hover,
-.collection-filter__button.is-active {
+.collection-filter__button.is-active,
+.tag-filter__button:hover,
+.tag-filter__button.is-active {
   background: rgba(255, 255, 255, 0.07);
   color: var(--text);
 }
 
-.collection-filter__button.is-active {
+.collection-filter__button.is-active,
+.tag-filter__button.is-active {
   border-color: rgba(82, 207, 125, 0.2);
   color: var(--green);
   box-shadow: inset 0 0 0 1px rgba(82, 207, 125, 0.08);
@@ -1006,6 +1013,11 @@ textarea:focus,
   color: var(--muted);
   font-size: 0.78rem;
   text-align: right;
+}
+
+.speaker-filter {
+  min-height: 34px;
+  font-size: 0.82rem;
 }
 
 .search-count:empty {

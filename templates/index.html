@@ -111,9 +111,20 @@
           </button>
           {% endfor %}
         </div>
+        <div class="tag-filter" id="tag-filter" aria-label="Tag filter">
+          <button class="tag-filter__button is-active" type="button" data-tag-filter="all" aria-pressed="true">
+            <span>All tags</span>
+          </button>
+          {% for tag in tag_filters %}
+          <button class="tag-filter__button" type="button" data-tag-filter="{{ tag.name }}" aria-pressed="false">
+            <span>{{ tag.name }}</span>
+            <strong>{{ tag.count }}</strong>
+          </button>
+          {% endfor %}
+        </div>
         <div class="library-list">
           {% for record in records %}
-          <div class="library-row" data-record-row="{{ record.id }}" data-collection="{{ record.collection }}" title="{{ record.title }}">
+          <div class="library-row" data-record-row="{{ record.id }}" data-collection="{{ record.collection }}" data-tags="{{ record.tags|join('|') }}" title="{{ record.title }}">
             <a class="library-card {% if selected and selected.id == record.id %}is-active{% endif %}" href="{{ url_for('transcript_detail', record_id=record.id) }}" data-record-link="{{ record.id }}" title="{{ record.title }}">
               <div class="library-card__icon" aria-hidden="true">▶</div>
               <div class="library-card__body">
@@ -234,6 +245,12 @@
                 <button class="search-nav-button" type="button" id="segment-search-prev" aria-label="Previous search result" disabled>Prev</button>
                 <button class="search-nav-button" type="button" id="segment-search-next" aria-label="Next search result" disabled>Next</button>
               </div>
+              <select id="speaker-filter" class="speaker-filter" aria-label="Filter transcript by speaker">
+                <option value="all">All speakers</option>
+                {% for speaker in speakers %}
+                <option value="{{ speaker }}">{{ speaker }}</option>
+                {% endfor %}
+              </select>
               <small class="search-count" id="segment-search-count" aria-live="polite"></small>
             </div>
           </section>

@@ -25,8 +25,10 @@
   const collectionEditor = document.getElementById("collection-editor");
   const collectionInput = document.getElementById("collection-input");
   const collectionFilter = document.getElementById("collection-filter");
+  const tagFilter = document.getElementById("tag-filter");
   const tagEditor = document.getElementById("tag-editor");
   const tagsInput = document.getElementById("tags-input");
+  const speakerFilter = document.getElementById("speaker-filter");
   const notesEditor = document.getElementById("notes-editor");
   const notesInput = document.getElementById("notes-input");
   const notesStatus = document.getElementById("notes-status");
@@ -68,11 +70,19 @@
   let transcriptDensity = window.localStorage.getItem("whisperLocal.transcriptDensity") || "comfortable";
   let searchScope = window.localStorage.getItem("whisperLocal.searchScope") || "transcript";
   let activeCollectionFilter = window.localStorage.getItem("whisperLocal.collectionFilter") || "all";
+  let activeTagFilter = window.localStorage.getItem("whisperLocal.tagFilter") || "all";
   const formatTime = (seconds) => {
     const total = Math.max(0, Math.floor(seconds || 0));
     const mins = Math.floor(total / 60);
     const secs = total % 60;
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+  const ensureSpeakerOption = (speaker) => {
+    if (!speakerFilter || !speaker || Array.from(speakerFilter.options).some((option) => option.value === speaker)) return;
+    const option = document.createElement("option");
+    option.value = speaker;
+    option.textContent = speaker;
+    speakerFilter.appendChild(option);
   };
 
   if (jobState && jobStatus) {
@@ -155,20 +165,39 @@
   }
 
   const getCollectionButtons = () => Array.from(document.querySelectorAll("[data-collection-filter]"));
+  const getTagButtons = () => Array.from(document.querySelectorAll("[data-tag-filter]"));
   const getCollectionRows = () => Array.from(document.querySelectorAll("[data-record-row]"));
-  const setCollectionFilter = (collection) => {
-    const buttons = getCollectionButtons();
-    const hasCollection = collection === "all" || buttons.some((button) => button.dataset.collectionFilter === collection);
+  const setLibraryFilters = (collection, tag) => {
+    const collectionButtons = getCollectionButtons();
+    const tagButtons = getTagButtons();
+    const hasCollection = collection === "all" || collectionButtons.some((button) => button.dataset.collectionFilter === collection);
+    const hasTag = tag === "all" || tagButtons.some((button) => button.dataset.tagFilter === tag);
     activeCollectionFilter = hasCollection ? collection : "all";
+    activeTagFilter = hasTag ? tag : "all";
     getCollectionRows().forEach((row) => {
-      row.hidden = activeCollectionFilter !== "all" && row.dataset.collection !== activeCollectionFilter;
+      const tags = (row.dataset.tags || "").split("|").filter(Boolean);
+      const collectionMatch = activeCollectionFilter === "all" || row.dataset.collection === activeCollectionFilter;
+      const tagMatch = activeTagFilter === "all" || tags.includes(activeTagFilter);
+      row.hidden = !collectionMatch || !tagMatch;
     });
-    buttons.forEach((button) => {
+    collectionButtons.forEach((button) => {
       const isActive = button.dataset.collectionFilter === activeCollectionFilter;
       button.classList.toggle("is-active", isActive);
       button.setAttribute("aria-pressed", String(isActive));
     });
+    tagButtons.forEach((button) => {
+      const isActive = button.dataset.tagFilter === activeTagFilter;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
     window.localStorage.setItem("whisperLocal.collectionFilter", activeCollectionFilter);
+    window.localStorage.setItem("whisperLocal.tagFilter", activeTagFilter);
+  };
+  const setCollectionFilter = (collection) => {
+    setLibraryFilters(collection, activeTagFilter);
+  };
+  const setTagFilter = (tag) => {
+    setLibraryFilters(activeCollectionFilter, tag);
   };
   const adjustCollectionCount = (collection, delta) => {
     if (!collection) return;
@@ -198,8 +227,15 @@
     getCollectionButtons().forEach((button) => {
       button.addEventListener("click", () => setCollectionFilter(button.dataset.collectionFilter || "all"));
     });
-    setCollectionFilter(activeCollectionFilter);
   }
+
+  if (tagFilter) {
+    getTagButtons().forEach((button) => {
+      button.addEventListener("click", () => setTagFilter(button.dataset.tagFilter || "all"));
+    });
+  }
+
+  setLibraryFilters(activeCollectionFilter, activeTagFilter);
 
   const setActiveTab = (targetId) => {
     tabs.forEach((item) => item.classList.toggle("is-active", item.dataset.tabTarget === targetId));
@@ -419,6 +455,10 @@
     const getSearchTextEl = (item) => item.querySelector("p") || item;
     const getSearchItems = () => (searchScope === "summary" ? getSummaryCards() : allSegments);
     const getInactiveSearchItems = () => (searchScope === "summary" ? allSegments : getSummaryCards());
+    const getSegmentSpeaker = (item) => {
+      const label = item.querySelector("[data-segment-speaker-label]");
+      return label && !label.hidden ? label.textContent.trim() : "";
+    };
     const clearHighlight = (item) => {
       const textEl = getSearchTextEl(item);
       if (!textEl || textEl.dataset.originalText === undefined) return;
@@ -436,14 +476,16 @@
         button.setAttribute("aria-pressed", String(isActive));
       });
       search.placeholder = searchScope === "summary" ? "Search summary..." : "Search transcript...";
+      if (speakerFilter) speakerFilter.disabled = searchScope === "summary";
       window.localStorage.setItem("whisperLocal.searchScope", searchScope);
     };
     const updateSearchControls = () => {
       const hasMatches = searchMatches.length > 0;
+      const speakerFiltered = speakerFilter && !speakerFilter.disabled && speakerFilter.value !== "all";
       if (searchPrevious) searchPrevious.disabled = !hasMatches;
       if (searchNext) searchNext.disabled = !hasMatches;
       if (searchCount) {
-        if (!search.value.trim()) {
+        if (!search.value.trim() && !speakerFiltered) {
           searchCount.textContent = "";
         } else if (hasMatches) {
           searchCount.textContent = `${activeSearchIndex + 1} of ${searchMatches.length} ${searchScope} matches`;
@@ -496,28 +538,30 @@
     };
     const renderSearch = () => {
       const query = search.value.trim().toLowerCase();
+      const speakerValue = speakerFilter && !speakerFilter.disabled ? speakerFilter.value : "all";
       searchMatches = [];
       clearActiveSearchHit();
       getInactiveSearchItems().forEach((item) => {
         item.hidden = false;
         clearHighlight(item);
       });
-      if (query) {
+      if (query || (searchScope === "transcript" && speakerValue !== "all")) {
         setActiveTab(searchScope === "summary" ? "summary-pane" : "transcript-pane");
       }
       getSearchItems().forEach((item) => {
         const textEl = getSearchTextEl(item);
         const haystack = (textEl && (textEl.dataset.originalText || textEl.textContent) || item.textContent).toLowerCase();
-        const isMatch = !query || haystack.includes(query);
+        const speakerMatch = searchScope !== "transcript" || speakerValue === "all" || getSegmentSpeaker(item) === speakerValue;
+        const isMatch = (!query || haystack.includes(query)) && speakerMatch;
         item.hidden = !isMatch;
-        if (query && isMatch) {
+        if ((query || speakerValue !== "all") && isMatch) {
           searchMatches.push(item);
-          highlightMatch(item, query);
+          if (query) highlightMatch(item, query);
         } else {
           clearHighlight(item);
         }
       });
-      if (query && searchMatches.length) {
+      if ((query || speakerValue !== "all") && searchMatches.length) {
         focusSearchHit(0);
       } else {
         activeSearchIndex = -1;
@@ -543,6 +587,7 @@
     });
     if (searchPrevious) searchPrevious.addEventListener("click", () => moveSearchHit(-1));
     if (searchNext) searchNext.addEventListener("click", () => moveSearchHit(1));
+    if (speakerFilter) speakerFilter.addEventListener("change", renderSearch);
     renderSearchScope();
     updateSearchControls();
   }
@@ -724,6 +769,9 @@
       const payload = await response.json();
       if (payload.ok) {
         tagsInput.value = payload.tags.join(", ");
+        const row = document.querySelector(`[data-record-row="${state.recordId}"]`);
+        if (row) row.dataset.tags = payload.tags.join("|");
+        setLibraryFilters(activeCollectionFilter, activeTagFilter);
       }
     });
   }
@@ -798,6 +846,7 @@
           const nextSpeaker = (payload.segment && payload.segment.speaker) || "";
           speakerLabel.textContent = nextSpeaker;
           speakerLabel.hidden = !nextSpeaker;
+          ensureSpeakerOption(nextSpeaker);
           closeEditor();
         } catch (error) {
           console.error(error);
