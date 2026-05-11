@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -18,15 +19,17 @@ UPLOAD_ACCEPT = ".ogg,.mp3,.m4a,.wav,.mp4,.mpeg,.webm,.aac,.flac"
 ALLOWED_EXTENSIONS = {ext.strip(".") for ext in UPLOAD_ACCEPT.split(",")}
 
 SUMMARY_PROVIDERS = {
+    "local_instruction": "Local instruction (Qwen3)",
     "extractive": "Reliable extractive",
     "local_transformer": "Experimental German mT5",
 }
 SUMMARY_MODEL_NAME = "deutsche-telekom/mt5-small-sum-de-mit-v1"
+INSTRUCTION_SUMMARY_MODEL_NAME = os.environ.get("INSTRUCTION_SUMMARY_MODEL_NAME", "Qwen/Qwen3-0.6B")
 
 DEFAULT_SETTINGS = {
     "default_model": DEFAULT_MODEL,
     "default_language": DEFAULT_LANGUAGE,
-    "summary_provider": "extractive",
+    "summary_provider": "local_instruction",
     "summary_sentences": 3,
     "autoplay_on_seek": True,
     "confirm_before_delete": True,

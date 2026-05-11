@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 import re
 
-from config import DEFAULT_SETTINGS, SUMMARY_MODEL_NAME, SUMMARY_PROVIDERS
+from config import DEFAULT_SETTINGS, INSTRUCTION_SUMMARY_MODEL_NAME, SUMMARY_MODEL_NAME, SUMMARY_PROVIDERS
 
 try:
-    from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+    from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 except ImportError:  # pragma: no cover
+    AutoModelForCausalLM = None
     AutoModelForSeq2SeqLM = None
     AutoTokenizer = None
 
@@ -363,12 +364,15 @@ def chunk_text(text: str, max_chars: int = 2200) -> list[str]:
 
 
 def parse_summary_output(text: str, max_items: int) -> list[str]:
+    text = re.sub(r"^\s*(zusammenfassung|summary)\s*:\s*", "", text.strip(), flags=re.IGNORECASE)
     lines = [line.strip(" -•\t") for line in text.splitlines() if line.strip(" -•\t")]
     if len(lines) < 2:
         lines = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
     cleaned = []
     for line in lines:
         normalized = re.sub(r"\s+", " ", line).strip()
+        normalized = re.sub(r"^(?:satz|sentence)\s*\d+\s*:\s*", "", normalized, flags=re.IGNORECASE)
+        normalized = re.sub(r"^(hauptthema|entscheidungen?|risiken?|nächste schritte|naechste schritte|next steps)\s*:\s*", "", normalized, flags=re.IGNORECASE)
         if not normalized:
             continue
         if normalized[-1] not in ".!?":
@@ -401,8 +405,8 @@ def paragraphize_summary(items: list[str], max_chars: int = 420) -> list[str]:
 
 
 def get_summary_backend():
-    if "backend" in _SUMMARY_BACKEND:
-        return _SUMMARY_BACKEND["backend"]
+    if "seq2seq_backend" in _SUMMARY_BACKEND:
+        return _SUMMARY_BACKEND["seq2seq_backend"]
     if AutoTokenizer is None or AutoModelForSeq2SeqLM is None:
         raise RuntimeError("Transformers is not installed.")
     try:
@@ -412,7 +416,19 @@ def get_summary_backend():
 
     tokenizer = AutoTokenizer.from_pretrained(SUMMARY_MODEL_NAME)
     model = AutoModelForSeq2SeqLM.from_pretrained(SUMMARY_MODEL_NAME)
-    _SUMMARY_BACKEND["backend"] = (tokenizer, model)
+    _SUMMARY_BACKEND["seq2seq_backend"] = (tokenizer, model)
+    return tokenizer, model
+
+
+def get_instruction_backend():
+    if "instruction_backend" in _SUMMARY_BACKEND:
+        return _SUMMARY_BACKEND["instruction_backend"]
+    if AutoTokenizer is None or AutoModelForCausalLM is None:
+        raise RuntimeError("Transformers is not installed.")
+
+    tokenizer = AutoTokenizer.from_pretrained(INSTRUCTION_SUMMARY_MODEL_NAME)
+    model = AutoModelForCausalLM.from_pretrained(INSTRUCTION_SUMMARY_MODEL_NAME, dtype="auto")
+    _SUMMARY_BACKEND["instruction_backend"] = (tokenizer, model)
     return tokenizer, model
 
 
@@ -426,6 +442,44 @@ def run_summary_generation(tokenizer, model, prompt: str, max_new_tokens: int) -
         length_penalty=1.0,
     )
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
+
+
+def build_instruction_summary_prompt(text: str, language: str, item_count: int) -> str:
+    density = "1 sehr kurzer Satz" if item_count <= 1 else f"{min(item_count, 5)} kurze Saetze"
+    if language == "de":
+        return (
+            "Fasse das folgende Transkript auf Deutsch zusammen.\n"
+            f"Schreibe {density} als normale Saetze, nicht als Liste.\n"
+            "Keine Ueberschriften. Keine Zitate. Keine Wiederholung des Wortlauts. Keine Meta-Saetze.\n"
+            "Nenne nur Hauptthema, wichtige Aussagen, Entscheidungen, Risiken und naechste Schritte.\n"
+            "Gib nur die Zusammenfassung aus.\n\n"
+            f"Transkript:\n{text}\n\nZusammenfassung:"
+        )
+    return (
+        f"Summarize the following transcript in {min(item_count, 5)} short sentence(s).\n"
+        "No quotes. Do not repeat the wording. No meta commentary.\n"
+        "Only mention the main topic, important points, decisions, risks, and next steps.\n"
+        "Return only the summary.\n\n"
+        f"Transcript:\n{text}\n\nSummary:"
+    )
+
+
+def run_instruction_generation(tokenizer, model, prompt: str, max_new_tokens: int) -> str:
+    messages = [{"role": "user", "content": prompt}]
+    try:
+        rendered = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, enable_thinking=False)
+    except TypeError:
+        rendered = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    inputs = tokenizer(rendered, return_tensors="pt", truncation=True, max_length=6144)
+    outputs = model.generate(
+        **inputs,
+        max_new_tokens=max_new_tokens,
+        do_sample=False,
+        pad_token_id=tokenizer.eos_token_id,
+    )
+    decoded = tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1] :], skip_special_tokens=True)
+    decoded = re.sub(r"<think>.*?</think>", "", decoded, flags=re.DOTALL | re.IGNORECASE)
+    return decoded.strip()
 
 
 def build_summary_prompt(text: str, language: str, item_count: int, *, aggregate: bool = False) -> str:
@@ -525,9 +579,37 @@ def summarize_with_local_model(text: str, language: str, max_items: int) -> list
     return [final_paragraph]
 
 
+def summarize_with_instruction_model(text: str, language: str, max_items: int) -> list[str]:
+    tokenizer, model = get_instruction_backend()
+    cleaned = normalize_transcript_for_summary(text)
+    if not cleaned:
+        return ["No summary available yet."]
+
+    prompt = build_instruction_summary_prompt(cleaned, language, max_items)
+    decoded = run_instruction_generation(tokenizer, model, prompt, max_new_tokens=220)
+    items = parse_summary_output(decoded, max_items=max(1, min(max_items, 5)))
+    good_items = [item for item in items if not summary_looks_bad(item, cleaned)]
+    if not good_items:
+        compact = clean_generated_paragraph(decoded, max_chars=520)
+        if compact and not summary_looks_bad(compact, cleaned):
+            good_items = [compact]
+    if not good_items:
+        raise RuntimeError("local instruction output failed quality checks")
+    return good_items[:max_items]
+
+
 def generate_summary(text: str, language: str, settings: dict) -> tuple[list[str], str]:
     provider = settings["summary_provider"]
     max_items = int(settings["summary_sentences"])
+    if provider == "local_instruction":
+        try:
+            return summarize_with_instruction_model(text, language, max_items), provider
+        except Exception as exc:
+            message = str(exc).strip().splitlines()[0] if str(exc).strip() else exc.__class__.__name__
+            if "not installed" in message or "unavailable" in message or "quality checks" in message:
+                logger.info("summary provider unavailable; using extractive: %s", message)
+            else:
+                logger.warning("summary provider failed; falling back to extractive: %s", message)
     if provider == "local_transformer":
         try:
             return summarize_with_local_model(text, language, max_items), provider

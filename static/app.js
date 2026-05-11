@@ -66,6 +66,7 @@
   const confirmModalConfirm = document.getElementById("confirm-modal-confirm");
   const appSettings = (state && state.settings) || { autoplay_on_seek: true, confirm_before_delete: true };
   const summaryProviderNames = {
+    local_instruction: "Local instruction (Qwen3)",
     local_transformer: "Experimental German mT5",
     extractive: "Reliable extractive"
   };

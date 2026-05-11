@@ -52,6 +52,26 @@ class BackendBehaviorTest(unittest.TestCase):
         self.assertEqual(provider, "extractive")
         self.assertTrue(summary)
 
+    def test_instruction_summary_provider_success_and_fallback(self):
+        with mock.patch.object(summaries, "summarize_with_instruction_model", return_value=["Launch-Risiken und nächste Schritte."]):
+            summary, provider = app.generate_summary(
+                "Anna bespricht den Produktlaunch und nächste Schritte.",
+                "de",
+                {"summary_provider": "local_instruction", "summary_sentences": 3},
+            )
+
+        with mock.patch.object(summaries, "summarize_with_instruction_model", side_effect=RuntimeError("model unavailable")):
+            fallback, fallback_provider = app.generate_summary(
+                "Anna bespricht den Produktlaunch und nächste Schritte.",
+                "de",
+                {"summary_provider": "local_instruction", "summary_sentences": 3},
+            )
+
+        self.assertEqual(provider, "local_instruction")
+        self.assertEqual(summary, ["Launch-Risiken und nächste Schritte."])
+        self.assertEqual(fallback_provider, "extractive")
+        self.assertTrue(fallback)
+
     def test_extractive_summary_cleans_timestamps_and_title_uses_summary(self):
         summary, provider = app.generate_summary(
             "00:00 ähm Anna bespricht den Produktlaunch mit Budgetfreigabe. "

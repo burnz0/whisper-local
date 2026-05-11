@@ -60,5 +60,7 @@ Then open `http://127.0.0.1:8765`.
 - To check local runtime dependencies, run `make deps`.
 - Persistence intentionally stays JSON-backed while the app is single-user and local-first; SQLite can wait until JSON becomes a real limitation.
 - Default language is German.
+- Default summary provider is the local Qwen instruction model (`Qwen/Qwen3-0.6B`).
+- To test a stronger local summary model, run with `INSTRUCTION_SUMMARY_MODEL_NAME=Qwen/Qwen3-1.7B`.
 - Supported models: `tiny`, `base`, `small`.
 - Supported file types: `.ogg`, `.mp3`, `.m4a`, `.wav`, `.mp4`, `.mpeg`, `.webm`, `.aac`, `.flac`.
