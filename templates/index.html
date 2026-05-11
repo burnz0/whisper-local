@@ -112,6 +112,16 @@
       {% if error %}
       <div class="flash flash-error">{{ error }}</div>
       {% endif %}
+      {% if job %}
+      <div class="flash job-flash" id="job-status" data-job-id="{{ job.id }}">
+        <strong id="job-status-title">
+          {% if job.status == "failed" %}Transcription failed{% elif job.status == "complete" %}Transcription complete{% else %}Transcribing audio{% endif %}
+        </strong>
+        <span id="job-status-message">
+          {% if job.status == "failed" %}{{ job.error }}{% elif job.status == "complete" %}Opening transcript...{% else %}{{ job.source_name }} is {{ job.status }}.{% endif %}
+        </span>
+      </div>
+      {% endif %}
 
       <section class="composer">
         <div class="upload-card {% if selected %}is-compact{% endif %}" id="upload-card">
@@ -279,6 +289,11 @@
       settings: {{ settings|tojson }},
       language: {{ selected.language|tojson }}
     };
+  </script>
+  {% endif %}
+  {% if job %}
+  <script>
+    window.APP_JOB_STATE = {{ job|tojson }};
   </script>
   {% endif %}
   <div class="modal-backdrop" id="confirm-modal" hidden>

@@ -1,5 +1,6 @@
 (function () {
   const state = window.APP_STATE || null;
+  const jobState = window.APP_JOB_STATE || null;
   const audio = document.getElementById("audio-player");
   const toggle = document.getElementById("player-toggle");
   const currentTime = document.getElementById("current-time");
@@ -16,6 +17,9 @@
   const summaryCards = document.getElementById("summary-cards");
   const summaryProviderLabel = document.getElementById("summary-provider-label");
   const titleEl = document.getElementById("record-title");
+  const jobStatus = document.getElementById("job-status");
+  const jobStatusTitle = document.getElementById("job-status-title");
+  const jobStatusMessage = document.getElementById("job-status-message");
   const transcribeForm = document.getElementById("transcribe-form");
   const transcribeButton = document.getElementById("transcribe-button");
   const transcribeStatus = document.getElementById("transcribe-status");
@@ -43,6 +47,36 @@
     const secs = total % 60;
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
+
+  if (jobState && jobStatus) {
+    const pollJob = async () => {
+      try {
+        const response = await fetch(`/jobs/${jobState.id}.json`);
+        const payload = await response.json();
+        if (!payload.ok) throw new Error(payload.error || "Job status unavailable.");
+        const job = payload.job;
+        if (jobStatusTitle) {
+          jobStatusTitle.textContent =
+            job.status === "failed" ? "Transcription failed" : job.status === "complete" ? "Transcription complete" : "Transcribing audio";
+        }
+        if (jobStatusMessage) {
+          jobStatusMessage.textContent =
+            job.status === "failed" ? job.error || "Transcription failed." : job.status === "complete" ? "Opening transcript..." : `${job.source_name} is ${job.status}.`;
+        }
+        if (job.status === "complete" && payload.redirect_url) {
+          window.location.href = payload.redirect_url;
+          return;
+        }
+        if (job.status !== "failed") {
+          window.setTimeout(pollJob, 1500);
+        }
+      } catch (error) {
+        if (jobStatusTitle) jobStatusTitle.textContent = "Status unavailable";
+        if (jobStatusMessage) jobStatusMessage.textContent = error.message || "Could not read job status.";
+      }
+    };
+    window.setTimeout(pollJob, 800);
+  }
 
   const setSidebarPanel = (targetId) => {
     sidebarPanels.forEach((panel) => {

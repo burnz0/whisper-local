@@ -1,0 +1,256 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+from flask import abort, jsonify, redirect, render_template, request, send_from_directory, url_for
+
+from config import LANGUAGES, MODELS, SUMMARY_PROVIDERS, TRANSCRIPT_DIR, UPLOAD_ACCEPT, UPLOAD_DIR
+from jobs import get_job, start_transcription_job
+from storage import (
+    delete_record,
+    get_record,
+    load_library,
+    load_settings,
+    rename_record,
+    save_settings,
+    save_upload,
+)
+from summaries import (
+    generate_summary,
+    generate_title_from_summary,
+    generate_title_with_local_model,
+    normalize_settings,
+    slugify_title,
+    format_duration,
+)
+
+
+def build_stats(records) -> dict[str, str]:
+    total_duration = sum(item.duration_seconds for item in records)
+    return {
+        "count": str(len(records)),
+        "duration": format_duration(total_duration),
+        "last_model": records[0].model if records else "small",
+    }
+
+
+def friendly_transcription_error(exc: Exception) -> tuple[str, int]:
+    if isinstance(exc, ValueError):
+        return str(exc), 400
+
+    message = str(exc).strip()
+    lowered = message.lower()
+    if isinstance(exc, FileNotFoundError) or "ffmpeg" in lowered:
+        return "FFmpeg is required to read this audio file. Install ffmpeg and try again.", 500
+    if "model" in lowered or "whisper" in lowered:
+        return f"Whisper could not process this file: {message or exc.__class__.__name__}", 500
+    return f"Transcription failed: {message or exc.__class__.__name__}", 500
+
+
+def render_workspace(
+    records,
+    settings: dict,
+    *,
+    selected=None,
+    default_model: str | None = None,
+    default_language: str | None = None,
+    error: str | None = None,
+    job=None,
+):
+    return render_template(
+        "index.html",
+        records=records,
+        selected=selected,
+        models=MODELS,
+        languages=LANGUAGES,
+        summary_providers=SUMMARY_PROVIDERS,
+        default_model=default_model or settings["default_model"],
+        default_language=default_language or settings["default_language"],
+        stats=build_stats(records),
+        upload_accept=UPLOAD_ACCEPT,
+        settings=settings,
+        error=error,
+        job=job,
+    )
+
+
+def register_routes(app) -> None:
+    @app.get("/")
+    def index():
+        records = load_library()
+        settings = load_settings()
+        selected = records[0] if records else None
+        return render_workspace(records, settings, selected=selected)
+
+    @app.get("/transcripts/<record_id>")
+    def transcript_detail(record_id: str):
+        records = load_library()
+        settings = load_settings()
+        selected = next((record for record in records if record.id == record_id), None)
+        if selected is None:
+            abort(404)
+        return render_workspace(records, settings, selected=selected)
+
+    @app.post("/transcribe")
+    def transcribe_route():
+        records = load_library()
+        settings = load_settings()
+        model_name = request.form.get("model", settings["default_model"])
+        language = request.form.get("language", settings["default_language"])
+        upload = request.files.get("audio_file")
+        default_model = model_name if model_name in MODELS else settings["default_model"]
+        default_language = language if language in LANGUAGES else settings["default_language"]
+
+        if model_name not in MODELS or language not in LANGUAGES:
+            return (
+                render_workspace(
+                    records,
+                    settings,
+                    selected=records[0] if records else None,
+                    default_model=default_model,
+                    default_language=default_language,
+                    error="Please choose a supported model and language.",
+                ),
+                400,
+            )
+
+        if upload is None or not upload.filename:
+            return (
+                render_workspace(
+                    records=records,
+                    settings=settings,
+                    selected=records[0] if records else None,
+                    default_model=default_model,
+                    default_language=default_language,
+                    error="Please choose an audio file.",
+                ),
+                400,
+            )
+
+        try:
+            audio_path, transcript_id, source_name = save_upload(upload)
+            job = start_transcription_job(audio_path, transcript_id, source_name, model_name, language)
+        except Exception as exc:
+            error, status_code = friendly_transcription_error(exc)
+            return (
+                render_workspace(
+                    records=records,
+                    settings=settings,
+                    selected=records[0] if records else None,
+                    default_model=default_model,
+                    default_language=default_language,
+                    error=error,
+                ),
+                status_code,
+            )
+
+        return redirect(url_for("job_detail", job_id=job.id))
+
+    @app.get("/jobs/<job_id>")
+    def job_detail(job_id: str):
+        job = get_job(job_id)
+        if job is None:
+            abort(404)
+        records = load_library()
+        settings = load_settings()
+        selected = records[0] if records else None
+        return render_workspace(records, settings, selected=selected, job=job.as_dict())
+
+    @app.get("/jobs/<job_id>.json")
+    def job_status(job_id: str):
+        job = get_job(job_id)
+        if job is None:
+            return jsonify({"ok": False, "error": "Job not found."}), 404
+        payload = {"ok": True, "job": job.as_dict()}
+        if job.record_id:
+            payload["redirect_url"] = url_for("transcript_detail", record_id=job.record_id)
+        return jsonify(payload)
+
+    @app.post("/transcripts/<record_id>/rename")
+    def rename_route(record_id: str):
+        payload = request.get_json(silent=True) or {}
+        title = str(payload.get("title", "")).strip()
+        if not title:
+            return jsonify({"ok": False, "error": "Missing title."}), 400
+        if not rename_record(record_id, title):
+            return jsonify({"ok": False, "error": "Record not found."}), 404
+        return jsonify({"ok": True, "title": slugify_title(title)})
+
+    @app.post("/transcripts/<record_id>/delete")
+    def delete_route(record_id: str):
+        if not delete_record(record_id):
+            return jsonify({"ok": False, "error": "Record not found."}), 404
+
+        remaining = load_library()
+        next_url = url_for("transcript_detail", record_id=remaining[0].id) if remaining else url_for("index")
+        return jsonify({"ok": True, "redirect_url": next_url, "remaining_count": len(remaining)})
+
+    @app.post("/settings")
+    def settings_route():
+        settings = load_settings()
+        model = request.form.get("default_model", settings["default_model"])
+        language = request.form.get("default_language", settings["default_language"])
+        summary_provider = request.form.get("summary_provider", settings["summary_provider"])
+        summary_sentences = request.form.get("summary_sentences", settings["summary_sentences"])
+
+        save_settings(
+            normalize_settings(
+                {
+                    "default_model": model,
+                    "default_language": language,
+                    "summary_provider": summary_provider,
+                    "summary_sentences": summary_sentences,
+                    "autoplay_on_seek": request.form.get("autoplay_on_seek") == "on",
+                    "confirm_before_delete": request.form.get("confirm_before_delete") == "on",
+                }
+            )
+        )
+        return redirect(request.referrer or url_for("index"))
+
+    @app.post("/transcripts/<record_id>/resummarize")
+    def resummarize_route(record_id: str):
+        from storage import save_library
+
+        settings = load_settings()
+        records = load_library()
+        target = next((record for record in records if record.id == record_id), None)
+        if target is None:
+            return jsonify({"ok": False, "error": "Record not found."}), 404
+
+        summary, provider = generate_summary(target.transcript_text, target.language, settings)
+        next_title = target.title
+        for record in records:
+            if record.id == record_id:
+                record.summary = summary
+                record.summary_provider = provider
+                if record.title_source == "auto":
+                    fallback_title = Path(record.filename).stem
+                    if provider == "local_transformer":
+                        try:
+                            record.title = generate_title_with_local_model(summary, record.language, fallback_title)
+                        except Exception:
+                            record.title = generate_title_from_summary(summary, fallback_title)
+                    else:
+                        record.title = generate_title_from_summary(summary, fallback_title)
+                    next_title = record.title
+                else:
+                    next_title = record.title
+                break
+        save_library(records)
+        return jsonify({"ok": True, "summary": summary, "provider": provider, "title": next_title})
+
+    @app.get("/audio/<filename>")
+    def audio_file(filename: str):
+        return send_from_directory(UPLOAD_DIR, filename, as_attachment=False)
+
+    @app.get("/downloads/<record_id>.txt")
+    def download_text(record_id: str):
+        record = get_record(record_id)
+        if record is None:
+            abort(404)
+        return send_from_directory(
+            TRANSCRIPT_DIR,
+            record.transcript_filename,
+            as_attachment=True,
+            download_name=f"{record.title}.txt",
+        )

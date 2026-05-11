@@ -1075,6 +1075,18 @@ body.is-playing .waveform span:nth-child(4n) {
   background: rgba(110, 28, 28, 0.18);
 }
 
+.job-flash {
+  display: grid;
+  gap: 4px;
+  border-color: rgba(82, 207, 125, 0.18);
+  background: rgba(49, 126, 81, 0.14);
+  color: var(--text);
+}
+
+.job-flash span {
+  color: var(--muted);
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

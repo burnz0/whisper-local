@@ -5,6 +5,8 @@ from pathlib import Path
 from unittest import mock
 
 import app
+import summaries
+import storage
 
 
 class BackendBehaviorTest(unittest.TestCase):
@@ -39,7 +41,7 @@ class BackendBehaviorTest(unittest.TestCase):
     def test_summary_parsing_and_fallback_generation(self):
         parsed = app.parse_summary_output("- Erstes Thema\n- Erstes Thema\n- Zweites Thema", 3)
 
-        with mock.patch.object(app, "summarize_with_local_model", side_effect=RuntimeError("model unavailable")):
+        with mock.patch.object(summaries, "summarize_with_local_model", side_effect=RuntimeError("model unavailable")):
             summary, provider = app.generate_summary(
                 "Das ist ein wichtiger Satz. Dieser Satz beschreibt ein zweites Thema.",
                 "de",
@@ -70,9 +72,9 @@ class BackendBehaviorTest(unittest.TestCase):
             settings_path = root / "settings.json"
             settings_path.write_text("{bad json", encoding="utf-8")
 
-            with mock.patch.object(app, "DATA_DIR", root), mock.patch.object(app, "UPLOAD_DIR", root / "uploads"), mock.patch.object(
-                app, "TRANSCRIPT_DIR", root / "transcripts"
-            ), mock.patch.object(app, "SETTINGS_PATH", settings_path), mock.patch.object(app, "LIBRARY_PATH", root / "library.json"):
+            with mock.patch.object(storage, "DATA_DIR", root), mock.patch.object(storage, "UPLOAD_DIR", root / "uploads"), mock.patch.object(
+                storage, "TRANSCRIPT_DIR", root / "transcripts"
+            ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", root / "library.json"):
                 settings = app.load_settings()
 
             backups = list(root.glob("settings.corrupt-*.json"))
@@ -102,10 +104,10 @@ class BackendBehaviorTest(unittest.TestCase):
             library_path.write_text(library_payload, encoding="utf-8")
             settings_path.write_text(json.dumps(app.DEFAULT_SETTINGS), encoding="utf-8")
 
-            with mock.patch.object(app, "DATA_DIR", root), mock.patch.object(app, "UPLOAD_DIR", root / "uploads"), mock.patch.object(
-                app, "TRANSCRIPT_DIR", root / "transcripts"
-            ), mock.patch.object(app, "SETTINGS_PATH", settings_path), mock.patch.object(app, "LIBRARY_PATH", library_path), mock.patch.object(
-                app, "generate_summary", side_effect=AssertionError("load_library must not generate summaries")
+            with mock.patch.object(storage, "DATA_DIR", root), mock.patch.object(storage, "UPLOAD_DIR", root / "uploads"), mock.patch.object(
+                storage, "TRANSCRIPT_DIR", root / "transcripts"
+            ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path), mock.patch.object(
+                storage, "generate_summary", side_effect=AssertionError("load_library must not generate summaries")
             ):
                 records = app.load_library()
 
