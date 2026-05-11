@@ -1,5 +1,2 @@
-Flask>=3.1,<4
-openai-whisper
-transformers
-sentencepiece
-protobuf
+-r requirements-core.txt
+-r requirements-ml.txt

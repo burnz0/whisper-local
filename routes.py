@@ -7,9 +7,10 @@ from pathlib import Path
 
 from flask import Response, abort, jsonify, redirect, render_template, request, send_from_directory, url_for
 
-from config import DATA_DIR, LANGUAGES, MODELS, SETTINGS_PATH, SUMMARY_MODEL_NAME, SUMMARY_PROVIDERS, TRANSCRIPT_DIR, UPLOAD_ACCEPT, UPLOAD_DIR
+from config import DATA_DIR, LANGUAGES, SETTINGS_PATH, SUMMARY_MODEL_NAME, SUMMARY_PROVIDERS, TRANSCRIPT_DIR, UPLOAD_ACCEPT, UPLOAD_DIR
+from dependencies import runtime_dependency_report
 from errors import friendly_transcription_error
-from jobs import get_job, start_transcription_job
+from jobs import cancel_job, get_job, start_transcription_job
 from storage import (
     delete_record,
     delete_all_records,
@@ -36,6 +37,11 @@ from summaries import (
     slugify_title,
     format_duration,
 )
+from transcription import active_backend_info, supported_models
+
+
+def model_choices() -> tuple[str, ...]:
+    return supported_models()
 
 
 def build_stats(records) -> dict[str, str]:
@@ -107,7 +113,16 @@ def build_local_info() -> list[dict[str, str]]:
     hf_cache = Path(os.environ.get("HF_HOME", cache_root / "huggingface"))
     disk_root = DATA_DIR if DATA_DIR.exists() else DATA_DIR.parent
     usage = shutil.disk_usage(disk_root)
+    backend = active_backend_info()
+    dependency_summary = runtime_dependency_report()
+    missing_required = [item.name for item in dependency_summary if item.kind == "required" and item.status in {"missing", "unsupported"}]
     return [
+        {"label": "Python target", "value": "3.11 or 3.12"},
+        {"label": "Transcription backend", "value": backend.label},
+        {"label": "Backend mode", "value": backend.active_device_label},
+        {"label": "Supported models", "value": ", ".join(backend.supported_models)},
+        {"label": "Active cancellation", "value": "No" if not backend.can_cancel_active_job else "Yes"},
+        {"label": "Required dependency health", "value": "OK" if not missing_required else f"Missing/unsupported: {', '.join(missing_required)}"},
         {"label": "Storage path", "value": str(DATA_DIR)},
         {"label": "Audio uploads", "value": str(UPLOAD_DIR)},
         {"label": "Transcript exports", "value": str(TRANSCRIPT_DIR)},
@@ -128,14 +143,16 @@ def build_model_download_info() -> list[dict[str, str]]:
         "tiny": "~75 MB",
         "base": "~142 MB",
         "small": "~466 MB",
+        "turbo": "~1.6 GB",
     }
     expected_eta = {
         "tiny": "Usually under a minute",
         "base": "A few minutes",
         "small": "Several minutes on first use",
+        "turbo": "Longer first-use download",
     }
     model_info = []
-    for model in MODELS:
+    for model in model_choices():
         cache_file = whisper_cache / f"{model}.pt"
         cached = cache_file.exists()
         model_info.append(
@@ -167,7 +184,7 @@ def render_workspace(
         "index.html",
         records=records,
         selected=selected,
-        models=MODELS,
+        models=model_choices(),
         languages=LANGUAGES,
         summary_providers=SUMMARY_PROVIDERS,
         default_model=default_model or settings["default_model"],
@@ -209,10 +226,11 @@ def register_routes(app) -> None:
         model_name = request.form.get("model", settings["default_model"])
         language = request.form.get("language", settings["default_language"])
         upload = request.files.get("audio_file")
-        default_model = model_name if model_name in MODELS else settings["default_model"]
+        models = model_choices()
+        default_model = model_name if model_name in models else settings["default_model"]
         default_language = language if language in LANGUAGES else settings["default_language"]
 
-        if model_name not in MODELS or language not in LANGUAGES:
+        if model_name not in models or language not in LANGUAGES:
             return (
                 render_workspace(
                     records,
@@ -276,6 +294,12 @@ def register_routes(app) -> None:
         if job.record_id:
             payload["redirect_url"] = url_for("transcript_detail", record_id=job.record_id)
         return jsonify(payload)
+
+    @app.post("/jobs/<job_id>/cancel")
+    def job_cancel(job_id: str):
+        if not cancel_job(job_id):
+            return jsonify({"ok": False, "error": "Only queued transcription jobs can be canceled."}), 409
+        return jsonify({"ok": True, "job": get_job(job_id).as_dict()})
 
     @app.post("/transcripts/<record_id>/rename")
     def rename_route(record_id: str):

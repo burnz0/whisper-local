@@ -13,6 +13,7 @@ except ImportError as exc:  # pragma: no cover
     ) from exc
 
 from config import DEFAULT_LANGUAGE, DEFAULT_MODEL, DEFAULT_SETTINGS, LANGUAGES, MODELS
+from dependencies import format_dependency_report, runtime_dependency_report
 from routes import friendly_transcription_error, register_routes
 from storage import (
     LIBRARY_PATH,
@@ -36,7 +37,6 @@ from summaries import (
     parse_summary_output,
     summarize_with_local_model,
 )
-from transcription import check_dependencies
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -47,11 +47,10 @@ register_routes(app)
 
 
 def report_dependency_status() -> None:
-    missing = check_dependencies()
-    if missing:
-        logger.warning("missing optional/runtime dependencies: %s", ", ".join(missing))
-    else:
-        logger.info("runtime dependencies available")
+    report = runtime_dependency_report()
+    for item in report:
+        log = logger.warning if item.status in {"missing", "unsupported"} and item.kind == "required" else logger.info
+        log("dependency %s kind=%s status=%s detail=%s", item.name, item.kind, item.status, item.detail)
 
 
 def main() -> None:
@@ -64,7 +63,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.check_deps:
-        report_dependency_status()
+        print(format_dependency_report(runtime_dependency_report()))
         return
 
     if args.migrate_library:

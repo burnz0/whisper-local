@@ -46,6 +46,7 @@
   const jobStatusTitle = document.getElementById("job-status-title");
   const jobStatusMessage = document.getElementById("job-status-message");
   const jobMeta = jobStatus ? jobStatus.querySelector(".job-meta") : null;
+  const jobCancelButton = document.getElementById("job-cancel-button");
   const transcribeForm = document.getElementById("transcribe-form");
   const transcribeButton = document.getElementById("transcribe-button");
   const transcribeStatus = document.getElementById("transcribe-status");
@@ -113,6 +114,7 @@
       if (status === "running") return "Transcribing";
       if (status === "complete") return "Complete";
       if (status === "failed") return "Failed";
+      if (status === "canceled") return "Canceled";
       return status;
     };
     const renderJobMeta = (job) => {
@@ -139,22 +141,31 @@
         const job = payload.job;
         if (jobStatusTitle) {
           jobStatusTitle.textContent =
-            job.status === "failed" ? "Transcription failed" : job.status === "complete" ? "Transcription complete" : "Transcribing audio";
+            job.status === "failed"
+              ? "Transcription failed"
+              : job.status === "canceled"
+                ? "Transcription canceled"
+                : job.status === "complete"
+                  ? "Transcription complete"
+                  : "Transcribing audio";
         }
         if (jobStatusMessage) {
           jobStatusMessage.textContent =
             job.status === "failed"
               ? job.error || "Transcription failed."
+              : job.status === "canceled"
+                ? "The queued transcription was canceled before it started."
               : job.status === "complete"
                 ? "Opening transcript..."
                 : `${job.source_name} is ${job.status}; no cloud upload occurs.`;
         }
+        if (jobCancelButton) jobCancelButton.hidden = !job.can_cancel;
         renderJobMeta(job);
         if (job.status === "complete" && payload.redirect_url) {
           window.location.href = payload.redirect_url;
           return;
         }
-        if (job.status !== "failed") {
+        if (job.status !== "failed" && job.status !== "canceled") {
           window.setTimeout(pollJob, 1500);
         }
       } catch (error) {
@@ -162,6 +173,25 @@
         if (jobStatusMessage) jobStatusMessage.textContent = error.message || "Could not read job status.";
       }
     };
+    if (jobCancelButton) {
+      jobCancelButton.addEventListener("click", async () => {
+        jobCancelButton.disabled = true;
+        jobCancelButton.textContent = "Canceling...";
+        try {
+          const response = await fetch(`/jobs/${jobState.id}/cancel`, { method: "POST" });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Cancel failed.");
+          if (jobStatusTitle) jobStatusTitle.textContent = "Transcription canceled";
+          if (jobStatusMessage) jobStatusMessage.textContent = "The queued transcription was canceled before it started.";
+          if (payload.job) renderJobMeta(payload.job);
+          jobCancelButton.hidden = true;
+        } catch (error) {
+          jobCancelButton.disabled = false;
+          jobCancelButton.textContent = "Cancel queued job";
+          if (jobStatusMessage) jobStatusMessage.textContent = error.message || "Could not cancel queued job.";
+        }
+      });
+    }
     window.setTimeout(pollJob, 800);
   }
 

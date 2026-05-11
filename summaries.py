@@ -78,11 +78,13 @@ def bounded_int(value: object, default: int, *, minimum: int, maximum: int) -> i
 
 def normalize_settings(raw: dict | None = None) -> dict:
     from config import DEFAULT_LANGUAGE, DEFAULT_MODEL, LANGUAGES, MODELS
+    from transcription import supported_models
 
     source = raw or {}
     settings = dict(DEFAULT_SETTINGS)
     settings.update(source)
-    settings["default_model"] = settings["default_model"] if settings["default_model"] in MODELS else DEFAULT_MODEL
+    models = supported_models() or MODELS
+    settings["default_model"] = settings["default_model"] if settings["default_model"] in models else DEFAULT_MODEL
     settings["default_language"] = settings["default_language"] if settings["default_language"] in LANGUAGES else DEFAULT_LANGUAGE
     settings["summary_provider"] = (
         settings["summary_provider"] if settings["summary_provider"] in SUMMARY_PROVIDERS else DEFAULT_SETTINGS["summary_provider"]

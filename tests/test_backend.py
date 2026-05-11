@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest import mock
 
 import app
+import jobs
 import summaries
 import storage
 
@@ -139,6 +140,27 @@ class BackendBehaviorTest(unittest.TestCase):
         self.assertEqual(app.format_duration(0), "00:00")
         self.assertEqual(app.format_duration(65.9), "01:05")
         self.assertEqual(app.format_duration(3661), "1:01:01")
+
+    def test_queued_job_can_be_canceled(self):
+        job = jobs.TranscriptionJob(
+            id="job123",
+            status="queued",
+            source_name="audio.ogg",
+            model="base",
+            language="de",
+            processing_mode="CPU",
+            source_size_bytes=12,
+            queued_at=0,
+        )
+        with jobs._LOCK:
+            jobs._JOBS[job.id] = job
+        try:
+            self.assertTrue(jobs.cancel_job("job123"))
+            self.assertEqual(jobs.get_job("job123").status, "canceled")
+            self.assertFalse(jobs.cancel_job("job123"))
+        finally:
+            with jobs._LOCK:
+                jobs._JOBS.pop(job.id, None)
 
     def test_friendly_transcription_errors(self):
         unsupported, unsupported_status = app.friendly_transcription_error(ValueError("This file format is not supported yet."))

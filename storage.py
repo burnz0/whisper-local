@@ -31,6 +31,7 @@ from summaries import (
     slugify_title,
 )
 from transcription import transcribe_file
+from transcription import supported_models
 
 
 logger = logging.getLogger(__name__)
@@ -210,7 +211,7 @@ def record_from_payload(item: dict) -> TranscriptRecord:
         stored_filename=str(item.get("stored_filename", "")),
         transcript_filename=str(item.get("transcript_filename") or f"{transcript_id}.txt"),
         created_at=str(item.get("created_at", "")),
-        model=model if model in MODELS else DEFAULT_MODEL,
+        model=model if model in (supported_models() or MODELS) else DEFAULT_MODEL,
         language=language if language in LANGUAGES else DEFAULT_LANGUAGE,
         duration_seconds=coerce_float(item.get("duration_seconds")),
         transcript_text=transcript_text,

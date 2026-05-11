@@ -34,6 +34,7 @@ class TranscriptionJob:
     completed_at: float | None = None
     record_id: str | None = None
     error: str | None = None
+    cancel_requested: bool = False
 
     def as_dict(self) -> dict:
         now = time.time()
@@ -53,6 +54,8 @@ class TranscriptionJob:
             "estimated_duration": estimate_duration_label(self.source_size_bytes, self.model),
             "record_id": self.record_id,
             "error": self.error,
+            "cancel_requested": self.cancel_requested,
+            "can_cancel": self.status == "queued",
         }
 
 
@@ -96,6 +99,12 @@ def start_transcription_job(audio_path: Path, transcript_id: str, source_name: s
 
 
 def _run_job(job_id: str, audio_path: Path, transcript_id: str, source_name: str, model_name: str, language: str) -> None:
+    with _LOCK:
+        job = _JOBS.get(job_id)
+        if job is not None and job.cancel_requested:
+            job.status = "canceled"
+            job.completed_at = time.time()
+            return
     _update_job(job_id, status="running", started_at=time.time())
     try:
         record = create_transcript_from_audio(audio_path, transcript_id, source_name, model_name, language)
@@ -132,3 +141,16 @@ def _update_job(job_id: str, **updates) -> None:
 def get_job(job_id: str) -> TranscriptionJob | None:
     with _LOCK:
         return _JOBS.get(job_id)
+
+
+def cancel_job(job_id: str) -> bool:
+    with _LOCK:
+        job = _JOBS.get(job_id)
+        if job is None:
+            return False
+        if job.status != "queued":
+            return False
+        job.cancel_requested = True
+        job.status = "canceled"
+        job.completed_at = time.time()
+        return True

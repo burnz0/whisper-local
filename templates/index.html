@@ -166,6 +166,7 @@
           <span>Elapsed: {{ job.elapsed_seconds }}s</span>
           <span>Estimate: {{ job.estimated_duration }}</span>
         </div>
+        <button class="secondary-action job-cancel-button" type="button" id="job-cancel-button" {% if job.status != "queued" %}hidden{% endif %}>Cancel queued job</button>
       </div>
       {% endif %}
 
