@@ -679,6 +679,40 @@ input[type="search"] {
   border-bottom-color: var(--green);
 }
 
+.density-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.density-button {
+  min-height: 28px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  padding: 0 10px;
+}
+
+.density-button.is-active {
+  background: rgba(82, 207, 125, 0.14);
+  color: var(--green);
+}
+
+.density-button:hover:not(.is-active) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
 .search-box {
   margin-left: auto;
   width: min(380px, 100%);
@@ -775,6 +809,11 @@ input[type="search"] {
   background-clip: padding-box;
 }
 
+.segment-list.is-compact {
+  gap: 2px;
+  padding-top: 4px;
+}
+
 .segment {
   display: grid;
   grid-template-columns: 34px 70px minmax(0, 1fr) auto;
@@ -816,6 +855,12 @@ input[type="search"] {
   transform: translateY(-1px);
 }
 
+.segment-list.is-compact .segment {
+  grid-template-columns: 30px 58px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
 .segment.is-active {
   background: linear-gradient(
     180deg,
@@ -841,6 +886,12 @@ input[type="search"] {
     background 160ms ease;
 }
 
+.segment-list.is-compact .segment-play {
+  width: 30px;
+  height: 30px;
+  font-size: 0.78rem;
+}
+
 .segment:hover .segment-play,
 .segment.is-active .segment-play {
   transform: scale(1.06);
@@ -859,6 +910,12 @@ input[type="search"] {
   font-size: 0.88rem;
 }
 
+.segment-list.is-compact .segment-time {
+  min-height: 28px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+}
+
 .segment.is-active .segment-time {
   background: rgba(82, 207, 125, 0.13);
   color: var(--green);
@@ -872,6 +929,16 @@ input[type="search"] {
   font-weight: 400;
   color: rgba(243, 245, 248, 0.92);
   overflow-wrap: anywhere;
+}
+
+.segment-list.is-compact .segment p {
+  font-size: 0.88rem;
+  line-height: 1.38;
+}
+
+.segment-list.is-compact .segment-edit {
+  min-height: 28px;
+  font-size: 0.76rem;
 }
 
 .segment mark {

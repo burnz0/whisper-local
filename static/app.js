@@ -15,6 +15,8 @@
   const searchNext = document.getElementById("segment-search-next");
   const tabs = document.querySelectorAll(".tab");
   const panes = document.querySelectorAll(".pane");
+  const densityButtons = document.querySelectorAll("[data-density]");
+  const segmentList = document.getElementById("segment-list");
   const copyButton = document.getElementById("copy-button");
   const renameButton = document.getElementById("rename-button");
   const deleteButton = document.getElementById("delete-button");
@@ -53,6 +55,7 @@
   const segmentRows = Array.from(document.querySelectorAll(".segment[data-start]"));
   let lastActiveSegment = null;
   let followPlayback = window.localStorage.getItem("whisperLocal.followPlayback") !== "false";
+  let transcriptDensity = window.localStorage.getItem("whisperLocal.transcriptDensity") || "comfortable";
   const formatTime = (seconds) => {
     const total = Math.max(0, Math.floor(seconds || 0));
     const mins = Math.floor(total / 60);
@@ -119,6 +122,25 @@
     tabs.forEach((item) => item.classList.toggle("is-active", item.dataset.tabTarget === targetId));
     panes.forEach((pane) => pane.classList.toggle("is-active", pane.id === targetId));
   };
+
+  const setTranscriptDensity = (density) => {
+    transcriptDensity = density === "compact" ? "compact" : "comfortable";
+    if (segmentList) {
+      segmentList.classList.toggle("is-compact", transcriptDensity === "compact");
+    }
+    densityButtons.forEach((button) => {
+      const isActive = button.dataset.density === transcriptDensity;
+      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+    window.localStorage.setItem("whisperLocal.transcriptDensity", transcriptDensity);
+  };
+
+  setTranscriptDensity(transcriptDensity);
+
+  densityButtons.forEach((button) => {
+    button.addEventListener("click", () => setTranscriptDensity(button.dataset.density));
+  });
 
   const setPlayingState = (isPlaying) => {
     document.body.classList.toggle("is-playing", isPlaying);
