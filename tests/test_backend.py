@@ -35,7 +35,7 @@ class BackendBehaviorTest(unittest.TestCase):
         keyword_title = app.keyword_title_from_text("und der die Kultur Festival Konzert", "fallback")
 
         self.assertEqual(title, "Eine sehr lange Aussage mit viel")
-        self.assertEqual(fallback_title, "audio file")
+        self.assertEqual(fallback_title, "Audio file")
         self.assertEqual(keyword_title, "Kultur Festival Konzert")
 
     def test_summary_parsing_and_fallback_generation(self):
@@ -51,6 +51,45 @@ class BackendBehaviorTest(unittest.TestCase):
         self.assertEqual(parsed, ["Erstes Thema.", "Zweites Thema."])
         self.assertEqual(provider, "extractive")
         self.assertTrue(summary)
+
+    def test_extractive_summary_cleans_timestamps_and_title_uses_summary(self):
+        summary, provider = app.generate_summary(
+            "00:00 ähm Anna bespricht den Produktlaunch mit Budgetfreigabe. "
+            "00:12 Danach plant das Team die nächsten Schritte für die Demo.",
+            "de",
+            {"summary_provider": "extractive", "summary_sentences": 2},
+        )
+        title = app.generate_title_from_summary(summary, "bad_filename_001")
+
+        self.assertEqual(provider, "extractive")
+        self.assertNotIn("00:00", " ".join(summary))
+        self.assertNotIn("ähm", " ".join(summary).lower())
+        self.assertIn("Produktlaunch", title)
+        self.assertTrue(title[0].isupper())
+        self.assertNotIn("filename", title.lower())
+
+    def test_conversation_summary_uses_topics_not_copied_sentences(self):
+        text = (
+            "Du bist toll und zuverlässig. Ich wünsche mir, dass wir unterschiedliche Vorstellungen "
+            "in dieser Verbindung offen besprechen und besser verstehen."
+        )
+        summary, provider = app.generate_summary(
+            text,
+            "de",
+            {"summary_provider": "extractive", "summary_sentences": 3},
+        )
+        dense_summary, _provider = app.generate_summary(
+            text,
+            "de",
+            {"summary_provider": "extractive", "summary_sentences": 5},
+        )
+
+        self.assertEqual(provider, "extractive")
+        self.assertEqual(
+            summary,
+            ["Es geht um Wertschätzung, unterschiedliche Vorstellungen, Beziehung und Verbindung sowie offene Kommunikation."],
+        )
+        self.assertGreaterEqual(len(dense_summary), len(summary))
 
     def test_duration_formatting(self):
         self.assertEqual(app.format_duration(0), "00:00")

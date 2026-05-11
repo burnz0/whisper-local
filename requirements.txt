@@ -1,2 +1,5 @@
 Flask>=3.1,<4
 openai-whisper
+transformers
+sentencepiece
+protobuf

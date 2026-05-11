@@ -18,15 +18,15 @@ UPLOAD_ACCEPT = ".ogg,.mp3,.m4a,.wav,.mp4,.mpeg,.webm,.aac,.flac"
 ALLOWED_EXTENSIONS = {ext.strip(".") for ext in UPLOAD_ACCEPT.split(",")}
 
 SUMMARY_PROVIDERS = {
-    "local_transformer": "Local German model",
-    "extractive": "Fallback extractive",
+    "extractive": "Reliable extractive",
+    "local_transformer": "Experimental German mT5",
 }
 SUMMARY_MODEL_NAME = "deutsche-telekom/mt5-small-sum-de-mit-v1"
 
 DEFAULT_SETTINGS = {
     "default_model": DEFAULT_MODEL,
     "default_language": DEFAULT_LANGUAGE,
-    "summary_provider": "local_transformer",
+    "summary_provider": "extractive",
     "summary_sentences": 3,
     "autoplay_on_seek": True,
     "confirm_before_delete": True,

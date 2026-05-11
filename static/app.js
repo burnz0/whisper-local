@@ -20,6 +20,9 @@
   const densityButtons = document.querySelectorAll("[data-density]");
   const segmentList = document.getElementById("segment-list");
   const copyButton = document.getElementById("copy-button");
+  const copyPlainTextButton = document.getElementById("copy-plain-text-button");
+  const plainTextOutput = document.getElementById("plain-text-output");
+  const plainTextStatus = document.getElementById("plain-text-status");
   const renameButton = document.getElementById("rename-button");
   const deleteButton = document.getElementById("delete-button");
   const deleteLocalDataButton = document.getElementById("delete-local-data-button");
@@ -34,6 +37,7 @@
   const notesInput = document.getElementById("notes-input");
   const notesStatus = document.getElementById("notes-status");
   const refreshSummaryButton = document.getElementById("refresh-summary-button");
+  const copySummaryButton = document.getElementById("copy-summary-button");
   const summaryCards = document.getElementById("summary-cards");
   const summaryProviderLabel = document.getElementById("summary-provider-label");
   const summaryState = document.getElementById("summary-state");
@@ -62,8 +66,8 @@
   const confirmModalConfirm = document.getElementById("confirm-modal-confirm");
   const appSettings = (state && state.settings) || { autoplay_on_seek: true, confirm_before_delete: true };
   const summaryProviderNames = {
-    local_transformer: "Local German model",
-    extractive: "Fallback extractive"
+    local_transformer: "Experimental German mT5",
+    extractive: "Reliable extractive"
   };
   const segmentRows = Array.from(document.querySelectorAll(".segment[data-start]"));
   let lastActiveSegment = null;
@@ -77,6 +81,21 @@
     const mins = Math.floor(total / 60);
     const secs = total % 60;
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+  const copyTextToClipboard = async (text) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    const helper = document.createElement("textarea");
+    helper.value = text;
+    helper.setAttribute("readonly", "");
+    helper.style.position = "fixed";
+    helper.style.left = "-9999px";
+    document.body.appendChild(helper);
+    helper.select();
+    document.execCommand("copy");
+    helper.remove();
   };
   const ensureSpeakerOption = (speaker) => {
     if (!speakerFilter || !speaker || Array.from(speakerFilter.options).some((option) => option.value === speaker)) return;
@@ -241,7 +260,10 @@
   const setActiveTab = (targetId) => {
     tabs.forEach((item) => item.classList.toggle("is-active", item.dataset.tabTarget === targetId));
     panes.forEach((pane) => pane.classList.toggle("is-active", pane.id === targetId));
+    document.body.dataset.activePane = targetId;
   };
+
+  document.body.dataset.activePane = document.querySelector(".pane.is-active")?.id || "transcript-pane";
 
   const setTranscriptDensity = (density) => {
     transcriptDensity = density === "compact" ? "compact" : "comfortable";
@@ -718,11 +740,47 @@
   if (copyButton && state) {
     copyButton.addEventListener("click", async () => {
       try {
-        await navigator.clipboard.writeText(state.transcriptText || "");
+        await copyTextToClipboard(state.transcriptText || "");
         copyButton.textContent = "✓";
         window.setTimeout(() => {
           copyButton.textContent = "⧉";
         }, 1200);
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  }
+
+  if (copyPlainTextButton && plainTextOutput) {
+    copyPlainTextButton.addEventListener("click", async () => {
+      const text = plainTextOutput.value || "";
+      try {
+        await copyTextToClipboard(text);
+        copyPlainTextButton.textContent = "Copied";
+        if (plainTextStatus) plainTextStatus.textContent = "Copied text without timestamps.";
+        window.setTimeout(() => {
+          copyPlainTextButton.textContent = "Copy plain text";
+          if (plainTextStatus) plainTextStatus.textContent = "";
+        }, 1400);
+      } catch (error) {
+        if (plainTextStatus) plainTextStatus.textContent = "Copy failed.";
+        console.error(error);
+      }
+    });
+  }
+
+  if (copySummaryButton && summaryCards) {
+    copySummaryButton.addEventListener("click", async () => {
+      const text = Array.from(summaryCards.querySelectorAll(".summary-card"))
+        .map((item) => item.textContent.trim())
+        .filter(Boolean)
+        .join("\n");
+      try {
+        await copyTextToClipboard(text);
+        copySummaryButton.textContent = "Copied";
+        window.setTimeout(() => {
+          copySummaryButton.textContent = "Copy summary";
+        }, 1400);
       } catch (error) {
         console.error(error);
       }
@@ -947,6 +1005,7 @@
           textEl.dataset.originalText = nextText;
           segment.dataset.text = nextText.toLowerCase();
           state.transcriptText = payload.transcript_text || state.transcriptText;
+          if (plainTextOutput) plainTextOutput.value = state.transcriptText || "";
           closeEditor();
         } catch (error) {
           save.disabled = false;

@@ -24,7 +24,6 @@ from config import (
 from summaries import (
     generate_summary,
     generate_title_from_summary,
-    generate_title_with_local_model,
     normalize_settings,
     paragraphize_summary,
     sentence_summary,
@@ -154,7 +153,8 @@ def migrate_library() -> int:
             next_item["summary"] = summary
             next_item["summary_provider"] = used_provider
             if str(next_item.get("title_source", "manual")) == "auto":
-                next_item["title"] = generate_title_from_summary(summary, Path(str(next_item.get("filename", ""))).stem)
+                fallback_title = Path(str(next_item.get("filename", ""))).stem.replace("_", " ")
+                next_item["title"] = generate_title_from_summary(summary, fallback_title)
             changed_count += 1
 
         migrated.append(record_from_payload(next_item))
@@ -198,7 +198,7 @@ def record_from_payload(item: dict) -> TranscriptRecord:
     tags = item.get("tags") if isinstance(item.get("tags"), list) else []
 
     if not summary:
-        summary = paragraphize_summary(sentence_summary(transcript_text), max_chars=320)
+        summary = paragraphize_summary(sentence_summary(transcript_text, language=language), max_chars=320)
 
     return TranscriptRecord(
         id=transcript_id,
@@ -259,13 +259,7 @@ def create_transcript_from_audio(audio_path: Path, transcript_id: str, source_na
     created_at = datetime.now().isoformat(timespec="seconds")
     transcript_filename = f"{transcript_id}.txt"
     summary, summary_provider = generate_summary(text, language=language, settings=settings)
-    if summary_provider == "local_transformer":
-        try:
-            generated_title = generate_title_with_local_model(summary, language, title)
-        except Exception:
-            generated_title = generate_title_from_summary(summary, title)
-    else:
-        generated_title = generate_title_from_summary(summary, title)
+    generated_title = generate_title_from_summary(summary, title)
 
     record = TranscriptRecord(
         id=transcript_id,

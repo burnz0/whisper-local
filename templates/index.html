@@ -229,6 +229,7 @@
 
           <section class="tabs">
             <button class="tab is-active" data-tab-target="transcript-pane">Transcript</button>
+            <button class="tab" data-tab-target="plain-text-pane">Text</button>
             <button class="tab" data-tab-target="summary-pane">Summary</button>
             <button class="tab" data-tab-target="notes-pane">Notes</button>
             <div class="density-toggle" aria-label="Transcript density">
@@ -282,6 +283,16 @@
             </div>
           </section>
 
+          <section class="pane" id="plain-text-pane">
+            <div class="plain-text-panel">
+              <div class="plain-text-panel__toolbar">
+                <span id="plain-text-status" aria-live="polite"></span>
+                <button class="secondary-action" type="button" id="copy-plain-text-button">Copy plain text</button>
+              </div>
+              <textarea id="plain-text-output" readonly>{{ selected.transcript_text }}</textarea>
+            </div>
+          </section>
+
           <section class="pane" id="summary-pane">
             <div class="summary-list">
               <div class="summary-toolbar">
@@ -289,7 +300,10 @@
                   <span class="summary-provider" id="summary-provider-label">Generated with: {{ summary_providers.get(selected.summary_provider, selected.summary_provider) }}</span>
                   <span class="summary-state summary-state--ready" id="summary-state" aria-live="polite">Ready</span>
                 </div>
-                <button class="secondary-action" type="button" id="refresh-summary-button">Refresh summary</button>
+                <div class="summary-actions">
+                  <button class="secondary-action" type="button" id="copy-summary-button">Copy summary</button>
+                  <button class="secondary-action" type="button" id="refresh-summary-button">Refresh summary</button>
+                </div>
               </div>
               <div id="summary-cards">
               {% for item in selected.summary %}

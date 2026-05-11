@@ -22,13 +22,41 @@ STOPWORDS = {
     "ist", "ja", "kein", "keine", "mal", "mein", "mich", "mir", "mit", "nicht", "nur", "oder",
     "schon", "sehr", "sich", "sie", "so", "um", "und", "uns", "vom", "von", "war", "was", "weib",
     "wenn", "wie", "wir", "wird", "wo", "zu", "zum", "zur",
+    "abschnitt", "aussage", "beschreibt", "dieser", "diese", "dieses", "gespraech", "gespräch",
+    "dinge", "genau", "gestern", "halt", "kernaussage", "kurzfassung", "punkt", "punkte", "satz", "thema", "transkript", "wichtig",
+    "wichtige", "wichtiger", "wichtigen",
     "the", "and", "for", "with", "this", "that", "from", "you", "your", "have", "has", "are", "was",
     "were", "into", "about", "they", "them", "their", "but", "not", "just", "what", "when", "where",
+    "summary", "transcript", "conversation", "section", "sentence", "important", "topic", "point",
 }
+
+MIN_SUMMARY_WORDS = 5
+
+GERMAN_CONCEPTS = [
+    ("Wertschätzung", r"\b(toll|klug|gebildet|erfolgreich|zuverlaessig|zuverlässig|schätze|schaetze|sozial|zielstrebig)\b"),
+    ("Unsicherheit", r"\b(unsicher|unsicherheit|erschütter|erschuettern|nichtantwort|feuerwerk|ablehn)\w*\b"),
+    ("Kontakt und gemeinsame Pläne", r"\b(kontakt|sehen|zweimal|pläne|plaene|urlaub|zusammen|nähe|naehe)\w*\b"),
+    ("offene Kommunikation", r"\b(kommunikation|fragen|verstehen|verständnis|verstaendnis|interessiert|erklären|erklaeren|abklär|abklaer)\w*\b"),
+    ("unterschiedliche Vorstellungen", r"\b(unterschied|verschieden|vorstellungen|meinungen|vorgehensweise|welt)\w*\b"),
+    ("Beziehung und Verbindung", r"\b(verbindung|beziehung|zwischen zwei menschen)\b"),
+    ("nächste Schritte", r"\b(nächste|naechste|follow-up|aufgabe|todo|termin|planen|klären|klaeren)\w*\b"),
+]
+
+ENGLISH_CONCEPTS = [
+    ("appreciation", r"\b(appreciat|value|smart|successful|reliable|social|driven)\w*\b"),
+    ("uncertainty", r"\b(uncertain|insecure|rejection|unanswered|anxious)\w*\b"),
+    ("contact and shared plans", r"\b(contact|plans|vacation|together|closeness|wish)\w*\b"),
+    ("open communication", r"\b(communication|ask|understand|explain|clarify|interested)\w*\b"),
+    ("different expectations", r"\b(different|expectations|opinions|perspective|world)\w*\b"),
+    ("relationship context", r"\b(connection|relationship|between two people)\b"),
+    ("next steps", r"\b(next|follow-up|task|todo|schedule|plan|clarify)\w*\b"),
+]
 
 
 def slugify_title(value: str) -> str:
     cleaned = re.sub(r"\s+", " ", value).strip()
+    if cleaned:
+        cleaned = cleaned[0].upper() + cleaned[1:]
     return cleaned[:80] if cleaned else "New Transcript"
 
 
@@ -63,8 +91,11 @@ def normalize_settings(raw: dict | None = None) -> dict:
 
 
 def generate_title_from_summary(summary: list[str], fallback: str) -> str:
-    source = summary[0] if summary else fallback
-    return keyword_title_from_text(source, fallback)
+    for item in summary:
+        title = sentence_title_from_text(item, fallback)
+        if title.lower() != slugify_title(fallback).lower():
+            return title
+    return sentence_title_from_text(fallback, fallback)
 
 
 def clean_generated_paragraph(text: str, max_chars: int = 360) -> str:
@@ -77,6 +108,100 @@ def clean_generated_paragraph(text: str, max_chars: int = 360) -> str:
     if cleaned and cleaned[-1] not in ".!?":
         cleaned += "."
     return cleaned
+
+
+def normalize_transcript_for_summary(text: str) -> str:
+    cleaned = re.sub(r"\[[^\]]{1,80}\]", " ", text)
+    cleaned = re.sub(r"^\s*(?:\d{1,2}:)?\d{1,2}:\d{2}(?:[.,]\d{1,3})?\s*", "", cleaned, flags=re.MULTILINE)
+    cleaned = re.sub(r"\b(?:ähm+|äh+|hm+|mhm+|uh+|um+)\b", " ", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def split_transcript_units(text: str) -> list[str]:
+    normalized = normalize_transcript_for_summary(text)
+    if not normalized:
+        return []
+
+    parts = [part.strip() for part in re.split(r"(?<=[.!?])\s+", normalized) if part.strip()]
+    if len(parts) > 1:
+        return parts
+
+    clauses = [part.strip() for part in re.split(r"\s(?:aber|und dann|danach|außerdem|deshalb|weil|wenn|also)\s", normalized) if part.strip()]
+    if len(clauses) > 1:
+        parts = clauses
+    else:
+        words = normalized.split()
+        parts = [" ".join(words[start : start + 32]) for start in range(0, len(words), 32)]
+
+    units = []
+    buffer = ""
+    for part in parts:
+        candidate = f"{buffer} {part}".strip()
+        if len(candidate.split()) < 10:
+            buffer = candidate
+            continue
+        units.append(candidate)
+        buffer = ""
+    if buffer:
+        if units:
+            units[-1] = f"{units[-1]} {buffer}".strip()
+        else:
+            units.append(buffer)
+    return units
+
+
+def join_human_list(items: list[str], language: str) -> str:
+    if not items:
+        return ""
+    if len(items) == 1:
+        return items[0]
+    connector = " sowie " if language == "de" else " and "
+    return ", ".join(items[:-1]) + connector + items[-1]
+
+
+def domain_terms(text: str, limit: int = 3) -> list[str]:
+    words = re.findall(r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{3,}\b", text)
+    terms: dict[str, dict[str, object]] = {}
+    for index, word in enumerate(words):
+        lowered = word.lower()
+        if lowered in STOPWORDS or lowered in {"Alex"}:
+            continue
+        entry = terms.setdefault(lowered, {"word": word, "count": 0, "index": index})
+        entry["count"] = int(entry["count"]) + 1
+    ranked = sorted(terms.values(), key=lambda item: (-int(item["count"]), int(item["index"])))
+    return [str(item["word"]) for item in ranked[:limit]]
+
+
+def detected_concepts(text: str, language: str, limit: int = 4) -> list[str]:
+    normalized = normalize_transcript_for_summary(text).lower()
+    concept_patterns = GERMAN_CONCEPTS if language == "de" else ENGLISH_CONCEPTS
+    hits: list[tuple[int, str]] = []
+    for label, pattern in concept_patterns:
+        match = re.search(pattern, normalized, flags=re.IGNORECASE)
+        if match:
+            hits.append((match.start(), label))
+    return [label for _, label in sorted(hits, key=lambda item: item[0])][:limit]
+
+
+def concept_summary(text: str, language: str, max_items: int = 3) -> list[str]:
+    concept_limit = 2 if max_items <= 1 else 4 if max_items <= 3 else 6
+    concepts = detected_concepts(text, language, limit=concept_limit)
+    if language == "de" and (not concepts or concepts == ["nächste Schritte"]):
+        concepts = domain_terms(text) + concepts
+    if not concepts:
+        return []
+    if language == "de":
+        first_count = 2 if max_items <= 1 else 4
+        summary = [f"Es geht um {join_human_list(concepts[:first_count], language)}."]
+        if max_items >= 4 and len(concepts) > first_count:
+            summary.append(f"Außerdem geht es um {join_human_list(concepts[first_count:], language)}.")
+        return summary[:max_items]
+    first_count = 2 if max_items <= 1 else 4
+    summary = [f"It covers {join_human_list(concepts[:first_count], language)}."]
+    if max_items >= 4 and len(concepts) > first_count:
+        summary.append(f"It also covers {join_human_list(concepts[first_count:], language)}.")
+    return summary[:max_items]
 
 
 def normalize_title_candidate(text: str, fallback: str) -> str:
@@ -92,16 +217,43 @@ def normalize_title_candidate(text: str, fallback: str) -> str:
     return slugify_title(cleaned or fallback)
 
 
+def sentence_title_from_text(text: str, fallback: str) -> str:
+    cleaned = re.sub(r"\s+", " ", text).strip().strip("\"'`´“”‘’«»")
+    cleaned = re.sub(r"^(zusammenfassung|summary|titel|title)\s*:\s*", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^(es geht um|it covers)\s+", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^(in diesem|in dieser|der abschnitt|dieser abschnitt)\s+", "", cleaned, flags=re.IGNORECASE)
+    first_sentence = re.split(r"(?<=[.!?])\s+", cleaned)[0].strip()
+    first_sentence = first_sentence.rstrip(".!?").strip(",;:- ")
+    if "," in first_sentence or re.search(r"\s(sowie|and)\s", first_sentence, flags=re.IGNORECASE):
+        parts = [
+            part.strip()
+            for part in re.split(r"\s+sowie\s+|\s+and\s+|,", first_sentence, flags=re.IGNORECASE)
+            if part.strip()
+        ]
+        if len(parts) > 2:
+            first_sentence = ", ".join(parts[:2])
+    if len(first_sentence.split()) < 3:
+        return keyword_title_from_text(first_sentence, fallback)
+    if len(first_sentence) > 64:
+        first_sentence = first_sentence[:64].rsplit(" ", 1)[0].rstrip(",;:- ")
+    return slugify_title(first_sentence or fallback)
+
+
 def keyword_title_from_text(text: str, fallback: str) -> str:
-    words = re.findall(r"[A-Za-zÄÖÜäöüß]+", text)
-    picked: list[str] = []
-    for word in words:
+    words = re.findall(r"[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß-]*", text)
+    candidates: dict[str, dict[str, object]] = {}
+    for index, word in enumerate(words):
         lowered = word.lower()
         if lowered in STOPWORDS or len(lowered) < 4:
             continue
-        picked.append(word)
-        if len(picked) == 4:
-            break
+        canonical = lowered.strip("-")
+        entry = candidates.setdefault(canonical, {"word": word.strip("-"), "count": 0, "index": index})
+        entry["count"] = int(entry["count"]) + 1
+    ranked = sorted(
+        candidates.values(),
+        key=lambda item: (-int(item["count"]), int(item["index"])),
+    )
+    picked = [str(item["word"]) for item in ranked[:4]]
     if not picked:
         return slugify_title(fallback)
     return slugify_title(" ".join(picked))
@@ -120,6 +272,23 @@ def summary_looks_like_transcript(summary_text: str, transcript_text: str) -> bo
     return overlap >= max(18, int(min(len(summary_words), 80) * 0.55))
 
 
+def summary_looks_bad(summary_text: str, transcript_text: str) -> bool:
+    cleaned = re.sub(r"\s+", " ", summary_text).strip()
+    if len(cleaned.split()) < MIN_SUMMARY_WORDS:
+        return True
+    lowered = cleaned.lower()
+    words = lowered.split()
+    if len(words) >= 2 and words[0] == words[1]:
+        return True
+    if lowered in {"no summary available yet.", "keine zusammenfassung verfügbar."}:
+        return True
+    if re.search(r"\b(zusammenfassung|summary|titel|title)\s*:", lowered):
+        return True
+    if re.search(r"\b(gespraechstranskript|gesprächstranskript|transkript|satz|satzs|sentence)\b", lowered):
+        return True
+    return summary_looks_like_transcript(cleaned, transcript_text)
+
+
 def format_duration(seconds: float) -> str:
     total = max(0, int(seconds))
     hours, remainder = divmod(total, 3600)
@@ -129,11 +298,14 @@ def format_duration(seconds: float) -> str:
     return f"{minutes:02d}:{secs:02d}"
 
 
-def sentence_summary(text: str, max_items: int = 3) -> list[str]:
-    normalized = re.sub(r"\s+", " ", text).strip()
+def sentence_summary(text: str, max_items: int = 3, language: str = "de") -> list[str]:
+    normalized = normalize_transcript_for_summary(text)
     if not normalized:
         return ["No summary available yet."]
-    parts = [part.strip() for part in re.split(r"(?<=[.!?])\s+", normalized) if part.strip()]
+    concepts = concept_summary(normalized, language, max_items=max_items)
+    if concepts:
+        return concepts[:max_items]
+    parts = split_transcript_units(normalized)
     if not parts:
         return [normalized[:180]]
 
@@ -162,13 +334,14 @@ def sentence_summary(text: str, max_items: int = 3) -> list[str]:
     ordered = [sentence for _, _, sentence in sorted(top_ranked, key=lambda item: item[1])]
     summary = []
     for sentence in ordered:
-        cleaned = sentence.rstrip(".!?")
-        summary.append(cleaned if cleaned.endswith(":") else f"{cleaned}.")
+        cleaned = clean_generated_paragraph(sentence, max_chars=240)
+        if cleaned:
+            summary.append(cleaned)
     return summary
 
 
 def chunk_text(text: str, max_chars: int = 2200) -> list[str]:
-    cleaned = re.sub(r"\s+", " ", text).strip()
+    cleaned = normalize_transcript_for_summary(text)
     if not cleaned:
         return []
     sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", cleaned) if part.strip()]
@@ -232,6 +405,10 @@ def get_summary_backend():
         return _SUMMARY_BACKEND["backend"]
     if AutoTokenizer is None or AutoModelForSeq2SeqLM is None:
         raise RuntimeError("Transformers is not installed.")
+    try:
+        import google.protobuf  # noqa: F401
+    except ImportError as exc:
+        raise RuntimeError("Experimental German mT5 unavailable: protobuf is not installed.") from exc
 
     tokenizer = AutoTokenizer.from_pretrained(SUMMARY_MODEL_NAME)
     model = AutoModelForSeq2SeqLM.from_pretrained(SUMMARY_MODEL_NAME)
@@ -256,14 +433,15 @@ def build_summary_prompt(text: str, language: str, item_count: int, *, aggregate
         if aggregate:
             return (
                 "summarize: "
-                "Erstelle aus diesen Notizen einen kurzen deutschen Absatz mit 2 bis 4 Sätzen. "
-                "Fasse nur die Kernaussagen zusammen, abstrahiere vom Wortlaut und bleibe unter 320 Zeichen.\n\n"
+                "Schreibe eine sachliche deutsche Kurzfassung aus diesen Notizen. "
+                "Nenne nur konkrete Themen, Entscheidungen und naechste Schritte. "
+                "Keine Einleitung, keine Meta-Saetze, keine erfundenen Namen. Maximal 4 kurze Saetze.\n\n"
                 f"{text}"
             )
         return (
             "summarize: "
-            "Fasse diesen Abschnitt eines Gesprächstranskripts in einem kurzen deutschen Satz zusammen. "
-            "Nur Inhalt, keine Wiederholung des Wortlauts.\n\n"
+            "Fasse diesen Abschnitt eines Gespraechstranskripts in einem konkreten deutschen Satz zusammen. "
+            "Nur die Kernaussage, keine Wiederholung des Wortlauts, keine erfundenen Details.\n\n"
             f"{text}"
         )
     if aggregate:
@@ -314,14 +492,16 @@ def summarize_with_local_model(text: str, language: str, max_items: int) -> list
         prompt = build_summary_prompt(chunk, language, 1, aggregate=False)
         decoded = run_summary_generation(tokenizer, model, prompt, max_new_tokens=90)
         compact = clean_generated_paragraph(decoded, max_chars=160)
-        if compact:
+        if compact and not summary_looks_bad(compact, chunk):
             chunk_summaries.append(compact)
 
+    if not chunk_summaries:
+        raise RuntimeError("local transformer output failed quality checks")
+
     if len(chunks) == 1:
-        one = paragraphize_summary(chunk_summaries[:max_items], max_chars=320)
-        if summary_looks_like_transcript(one[0], text):
-            return paragraphize_summary(sentence_summary(text, max_items=max_items), max_chars=320)
-        return one
+        if summary_looks_bad(chunk_summaries[0], text):
+            raise RuntimeError("local transformer output failed quality checks")
+        return chunk_summaries[:max_items]
 
     aggregate_round = chunk_summaries
     while len(aggregate_round) > max_items:
@@ -340,8 +520,8 @@ def summarize_with_local_model(text: str, language: str, max_items: int) -> list
     final_prompt = build_summary_prompt(" ".join(aggregate_round), language, max_items, aggregate=True)
     final_text = run_summary_generation(tokenizer, model, final_prompt, max_new_tokens=180)
     final_paragraph = clean_generated_paragraph(final_text, max_chars=320)
-    if not final_paragraph or summary_looks_like_transcript(final_paragraph, text):
-        return paragraphize_summary(sentence_summary(text, max_items=max_items), max_chars=320)
+    if not final_paragraph or summary_looks_bad(final_paragraph, text):
+        raise RuntimeError("local transformer output failed quality checks")
     return [final_paragraph]
 
 
@@ -352,5 +532,9 @@ def generate_summary(text: str, language: str, settings: dict) -> tuple[list[str
         try:
             return summarize_with_local_model(text, language, max_items), provider
         except Exception as exc:
-            logger.warning("summary provider failed; falling back to extractive: %s", exc)
-    return paragraphize_summary(sentence_summary(text, max_items=max_items), max_chars=320), "extractive"
+            message = str(exc).strip().splitlines()[0] if str(exc).strip() else exc.__class__.__name__
+            if "not installed" in message or "unavailable" in message or "quality checks" in message:
+                logger.info("summary provider unavailable; using extractive: %s", message)
+            else:
+                logger.warning("summary provider failed; falling back to extractive: %s", message)
+    return sentence_summary(text, max_items=max_items, language=language), "extractive"

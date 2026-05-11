@@ -32,7 +32,6 @@ from storage import (
 from summaries import (
     generate_summary,
     generate_title_from_summary,
-    generate_title_with_local_model,
     normalize_settings,
     slugify_title,
     format_duration,
@@ -399,17 +398,9 @@ def register_routes(app) -> None:
                 record.summary = summary
                 record.summary_provider = provider
                 if record.title_source == "auto":
-                    fallback_title = Path(record.filename).stem
-                    if provider == "local_transformer":
-                        try:
-                            record.title = generate_title_with_local_model(summary, record.language, fallback_title)
-                        except Exception:
-                            record.title = generate_title_from_summary(summary, fallback_title)
-                    else:
-                        record.title = generate_title_from_summary(summary, fallback_title)
-                    next_title = record.title
-                else:
-                    next_title = record.title
+                    fallback_title = Path(record.filename).stem.replace("_", " ")
+                    record.title = generate_title_from_summary(summary, fallback_title)
+                next_title = record.title
                 break
         save_library(records)
         return jsonify({"ok": True, "summary": summary, "provider": provider, "title": next_title})
