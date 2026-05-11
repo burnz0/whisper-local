@@ -53,7 +53,7 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 
 - [x] Reduce upload glow dominance by moving ingest to contextual UI.
 - [ ] Continue reducing broad glow/gradient usage toward matte, precise surfaces.
-- [ ] Standardize spacing on 4/8/12/16/24/32px tokens throughout.
+- [x] Standardize spacing on 4/8/12/16/24/32px tokens throughout.
 - [ ] Strengthen typography hierarchy for transcript, metadata, timestamps, and controls.
 - [ ] Reduce corner-radius uniformity by role.
 - [x] Strengthen hover, selected, playing, focused, and active states.

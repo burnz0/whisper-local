@@ -56,7 +56,7 @@ body::before {
   display: grid;
   grid-template-columns: 280px 1fr;
   height: 100dvh;
-  padding: 10px;
+  padding: var(--space-2);
   gap: 0;
 }
 
@@ -74,24 +74,24 @@ body::before {
 
 .sidebar {
   border-radius: 28px 0 0 28px;
-  padding: 18px 16px 16px;
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-3);
   min-height: 0;
 }
 
 .workspace {
   border-radius: 0 28px 28px 0;
   border-left: 0;
-  padding: 12px;
+  padding: var(--space-2);
   min-width: 0;
   min-height: 0;
 }
 
 .brand {
   display: flex;
-  gap: 12px;
+  gap: var(--space-2);
   align-items: center;
 }
 
@@ -150,15 +150,15 @@ body::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  border-radius: 10px;
+  gap: var(--space-2);
+  border-radius: var(--space-1);
   border: 1px solid rgba(82, 207, 125, 0.22);
   background: linear-gradient(180deg, #3d965a, #2f7648);
   color: white;
   text-decoration: none;
   font-weight: 700;
-  min-height: 46px;
-  padding: 0 18px;
+  min-height: 48px;
+  padding: 0 var(--space-3);
   cursor: pointer;
   font: inherit;
 }
@@ -168,13 +168,13 @@ body::before {
   align-items: center;
   justify-content: center;
   min-height: 40px;
-  border-radius: 12px;
+  border-radius: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.035);
   color: var(--text);
   text-decoration: none;
   font-weight: 700;
-  padding: 0 14px;
+  padding: 0 var(--space-3);
   cursor: pointer;
 }
 
@@ -187,7 +187,7 @@ body::before {
   align-items: center;
   justify-content: center;
   min-height: 44px;
-  border-radius: 12px;
+  border-radius: var(--space-1);
   border: 1px solid rgba(255, 120, 120, 0.24);
   background: linear-gradient(
     180deg,
@@ -197,7 +197,7 @@ body::before {
   color: #fff2f2;
   font: inherit;
   font-weight: 700;
-  padding: 0 14px;
+  padding: 0 var(--space-3);
   cursor: pointer;
 }
 
@@ -238,7 +238,7 @@ textarea:focus-visible {
 
 .nav {
   display: grid;
-  gap: 10px;
+  gap: var(--space-1);
 }
 
 .nav-item {
@@ -248,8 +248,8 @@ textarea:focus-visible {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  padding: 11px 14px;
-  border-radius: 14px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--space-1);
   border: 1px solid transparent;
 }
 
@@ -266,7 +266,7 @@ textarea:focus-visible {
 
 .library {
   display: grid;
-  gap: 14px;
+  gap: var(--space-3);
   min-height: 0;
 }
 
@@ -284,9 +284,9 @@ textarea:focus-visible {
 
 .sidebar-settings {
   display: grid;
-  gap: 14px;
-  padding: 14px;
-  border-radius: 18px;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--space-3);
   border: 1px solid rgba(255, 255, 255, 0.04);
   background: rgba(255, 255, 255, 0.018);
   min-height: 0;
@@ -295,12 +295,12 @@ textarea:focus-visible {
 
 .sidebar-settings__form {
   display: grid;
-  gap: 12px;
+  gap: var(--space-2);
 }
 
 .sidebar-settings__form label {
   display: grid;
-  gap: 8px;
+  gap: var(--space-1);
 }
 
 .sidebar-settings__form label span {
@@ -324,14 +324,14 @@ textarea:focus-visible {
 
 .local-data {
   display: grid;
-  gap: 10px;
-  padding-top: 12px;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .local-data__list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-1);
 }
 
 .local-data__row {
@@ -347,13 +347,13 @@ textarea:focus-visible {
 .local-data__row code {
   display: block;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--space-1);
   background: rgba(255, 255, 255, 0.028);
   color: #dbe4f0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   font-size: 0.72rem;
   line-height: 1.35;
-  padding: 7px 8px;
+  padding: var(--space-1);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -365,7 +365,7 @@ textarea:focus-visible {
 
 .library-list {
   display: grid;
-  gap: 10px;
+  gap: var(--space-1);
   min-height: 0;
   overflow: auto;
   padding-right: 4px;
@@ -374,19 +374,19 @@ textarea:focus-visible {
 .library-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 34px;
-  gap: 10px;
+  gap: var(--space-1);
   align-items: center;
 }
 
 .library-card {
   display: grid;
   grid-template-columns: 28px 1fr;
-  gap: 10px;
+  gap: var(--space-1);
   text-decoration: none;
   color: inherit;
-  padding: 8px 10px;
+  padding: var(--space-1);
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: var(--space-1);
   background: transparent;
 }
 
@@ -458,7 +458,7 @@ textarea:focus-visible {
 .library-delete {
   width: 34px;
   height: 34px;
-  border-radius: 12px;
+  border-radius: var(--space-1);
   border: 1px solid transparent;
   background: transparent;
   color: #7f8898;
@@ -475,8 +475,8 @@ textarea:focus-visible {
 
 .local-note {
   margin-top: auto;
-  padding: 14px;
-  border-radius: 18px;
+  padding: var(--space-3);
+  border-radius: var(--space-3);
   border: 1px solid rgba(255, 255, 255, 0.04);
   background: rgba(255, 255, 255, 0.018);
 }
@@ -491,14 +491,14 @@ textarea:focus-visible {
 
 .upload-card,
 .detail-panel {
-  border-radius: 18px;
+  border-radius: var(--space-3);
   border: 1px solid rgba(255, 255, 255, 0.04);
   background:
     linear-gradient(180deg, rgba(16, 20, 28, 0.98), rgba(12, 15, 22, 0.98));
 }
 
 .upload-card {
-  padding: 16px;
+  padding: var(--space-3);
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease,
@@ -521,8 +521,8 @@ body.is-dragging-file .context-panel {
 .upload-icon {
   width: 56px;
   height: 56px;
-  margin: 4px auto 14px;
-  border-radius: 14px;
+  margin: 4px auto var(--space-3);
+  border-radius: var(--space-2);
   background: rgba(82, 207, 125, 0.1);
   border: 1px solid rgba(82, 207, 125, 0.18);
   display: grid;
@@ -549,7 +549,7 @@ body.is-dragging-file .context-panel {
 
 .transcribe-form {
   display: grid;
-  gap: 12px;
+  gap: var(--space-2);
 }
 
 .transcribe-form.is-submitting .file-picker,
@@ -598,29 +598,29 @@ body.is-dragging-file .context-panel {
 
 .settings-card {
   margin-top: 4px;
-  padding: 14px;
-  border-radius: 12px;
+  padding: var(--space-3);
+  border-radius: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.04);
   background: rgba(255, 255, 255, 0.015);
   display: grid;
-  gap: 14px;
+  gap: var(--space-3);
 }
 
 .settings-card label {
   display: grid;
-  gap: 8px;
+  gap: var(--space-1);
 }
 
 .model-cache-list {
   display: grid;
-  gap: 8px;
+  gap: var(--space-1);
 }
 
 .model-cache-row {
   display: grid;
   gap: 4px;
-  padding: 10px;
-  border-radius: 10px;
+  padding: var(--space-1);
+  border-radius: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.04);
   background: rgba(255, 255, 255, 0.022);
 }
@@ -629,7 +629,7 @@ body.is-dragging-file .context-panel {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--space-1);
 }
 
 .model-cache-row strong {
@@ -688,10 +688,10 @@ input[type="text"]:focus,
 }
 
 .detail-header {
-  padding: 16px 20px 8px;
+  padding: var(--space-3) var(--space-4) var(--space-1);
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-3);
   align-items: start;
 }
 
@@ -708,7 +708,7 @@ input[type="text"]:focus,
 .title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -719,8 +719,8 @@ input[type="text"]:focus,
 .meta-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
 }
 
 .meta-row span {
@@ -736,7 +736,7 @@ input[type="text"]:focus,
 
 .actions {
   display: flex;
-  gap: 10px;
+  gap: var(--space-1);
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -765,17 +765,17 @@ input[type="text"]:focus,
 .tabs {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 20px 10px;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .tag-editor {
   display: grid;
   grid-template-columns: auto minmax(160px, 280px) auto;
-  gap: 8px;
+  gap: var(--space-1);
   align-items: center;
-  margin-top: 10px;
+  margin-top: var(--space-1);
 }
 
 .tag-editor label {
@@ -821,7 +821,7 @@ input[type="text"]:focus,
   gap: 4px;
   min-height: 36px;
   padding: 3px;
-  border-radius: 12px;
+  border-radius: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.025);
 }
@@ -854,7 +854,7 @@ input[type="text"]:focus,
   margin-left: auto;
   width: min(380px, 100%);
   display: grid;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .search-scope {
@@ -894,13 +894,13 @@ input[type="text"]:focus,
 .search-input-row {
   display: grid;
   grid-template-columns: minmax(160px, 1fr) auto auto;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .search-nav-button {
   min-width: 54px;
   min-height: 40px;
-  border-radius: 10px;
+  border-radius: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.035);
   color: var(--text);
@@ -942,7 +942,7 @@ input[type="text"]:focus,
 }
 
 .segment-list {
-  padding: 6px 20px 10px;
+  padding: var(--space-1) var(--space-4);
   display: grid;
   gap: 4px;
   height: 100%;
@@ -988,11 +988,11 @@ input[type="text"]:focus,
 .segment {
   display: grid;
   grid-template-columns: 34px 70px minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: var(--space-1);
   align-items: start;
-  padding: 9px 8px;
+  padding: var(--space-1);
   border-bottom: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--space-1);
   transition:
     background 160ms ease,
     box-shadow 160ms ease,
@@ -1001,13 +1001,13 @@ input[type="text"]:focus,
 
 .segment-edit {
   min-height: 30px;
-  border-radius: 8px;
+  border-radius: var(--space-1);
   border: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(255, 255, 255, 0.035);
   color: var(--muted);
   font: inherit;
   font-size: 0.82rem;
-  padding: 0 10px;
+  padding: 0 var(--space-1);
   cursor: pointer;
 }
 
@@ -1028,8 +1028,8 @@ input[type="text"]:focus,
 
 .segment-list.is-compact .segment {
   grid-template-columns: 30px 58px minmax(0, 1fr) auto;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: var(--space-1);
+  padding: var(--space-1);
 }
 
 .segment.is-active {
@@ -1081,7 +1081,7 @@ input[type="text"]:focus,
   align-items: center;
   justify-content: center;
   min-height: 32px;
-  border-radius: 8px;
+  border-radius: var(--space-1);
   background: rgba(255, 255, 255, 0.05);
   color: rgba(184, 194, 211, 0.8);
   font-variant-numeric: tabular-nums;
@@ -1122,7 +1122,7 @@ input[type="text"]:focus,
 .segment-editor {
   grid-column: 3 / -1;
   display: grid;
-  gap: 8px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -1130,19 +1130,19 @@ input[type="text"]:focus,
   width: 100%;
   min-height: 92px;
   resize: vertical;
-  border-radius: 10px;
+  border-radius: var(--space-1);
   border: 1px solid rgba(82, 207, 125, 0.18);
   background: #111721;
   color: var(--text);
   font: inherit;
   line-height: 1.48;
-  padding: 10px 12px;
+  padding: var(--space-1) var(--space-2);
 }
 
 .segment-editor__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-1);
   flex-wrap: wrap;
 }
 
