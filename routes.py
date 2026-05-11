@@ -89,6 +89,40 @@ def build_local_info() -> list[dict[str, str]]:
     ]
 
 
+def build_model_download_info() -> list[dict[str, str]]:
+    cache_root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    whisper_cache = cache_root / "whisper"
+    disk_root = DATA_DIR if DATA_DIR.exists() else DATA_DIR.parent
+    usage = shutil.disk_usage(disk_root)
+    expected_sizes = {
+        "tiny": "~75 MB",
+        "base": "~142 MB",
+        "small": "~466 MB",
+    }
+    expected_eta = {
+        "tiny": "Usually under a minute",
+        "base": "A few minutes",
+        "small": "Several minutes on first use",
+    }
+    model_info = []
+    for model in MODELS:
+        cache_file = whisper_cache / f"{model}.pt"
+        cached = cache_file.exists()
+        model_info.append(
+            {
+                "name": model,
+                "label": model.capitalize(),
+                "status": "Cached" if cached else "Downloads on first use",
+                "size": format_bytes(cache_file.stat().st_size) if cached else expected_sizes.get(model, "Unknown"),
+                "eta": "Ready now" if cached else expected_eta.get(model, "Depends on connection"),
+                "storage": format_bytes(usage.free),
+                "retry": "Retry by starting transcription again if the model download fails.",
+                "cancel": "Cancel by closing the app before starting; active Whisper downloads cannot be cancelled here.",
+            }
+        )
+    return model_info
+
+
 def render_workspace(
     records,
     settings: dict,
@@ -110,6 +144,7 @@ def render_workspace(
         default_language=default_language or settings["default_language"],
         stats=build_stats(records),
         local_info=build_local_info(),
+        model_downloads=build_model_download_info(),
         upload_accept=UPLOAD_ACCEPT,
         settings=settings,
         error=error,

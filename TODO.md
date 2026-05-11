@@ -19,7 +19,7 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 - [x] Improve empty state for no transcript selected.
 - [x] Add full-app drag/drop target state for audio ingest.
 - [x] Add visible local-first processing copy during upload/transcription.
-- [ ] Design model download state with progress, size, ETA, storage needs, cancel, retry.
+- [x] Design model download state with progress, size, ETA, storage needs, cancel, retry.
 - [x] Design richer transcribing state with active model, CPU/GPU status, progress stages, estimated duration.
 - [x] Design summary generation states: generating, retrying, fallback, failed, local model used.
 - [x] Add specific failure states for missing FFmpeg, CUDA unavailable, corrupted audio, unsupported format, missing model.

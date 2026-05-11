@@ -349,6 +349,19 @@
                     {% endfor %}
                   </select>
                 </label>
+                <div class="model-cache-list" aria-label="Model download states">
+                  {% for model_info in model_downloads %}
+                  <div class="model-cache-row">
+                    <div>
+                      <strong>{{ model_info.label }}</strong>
+                      <span>{{ model_info.status }}</span>
+                    </div>
+                    <small>Size {{ model_info.size }} • ETA {{ model_info.eta }}</small>
+                    <small>Free disk {{ model_info.storage }}</small>
+                  </div>
+                  {% endfor %}
+                  <p class="model-cache-note">If a first-use download fails, start transcription again to retry. Active Whisper downloads cannot be cancelled from this panel.</p>
+                </div>
               </div>
 
               <button type="submit" class="transcribe-button" id="transcribe-button">Transcribe locally</button>

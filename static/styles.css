@@ -581,6 +581,44 @@ body.is-dragging-file .context-panel {
   gap: 8px;
 }
 
+.model-cache-list {
+  display: grid;
+  gap: 8px;
+}
+
+.model-cache-row {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.022);
+}
+
+.model-cache-row > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.model-cache-row strong {
+  font-size: 0.86rem;
+}
+
+.model-cache-row span,
+.model-cache-row small,
+.model-cache-note {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.model-cache-note {
+  margin: 0;
+  text-align: left;
+}
+
 select,
 input[type="search"] {
   width: 100%;
