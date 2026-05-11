@@ -118,7 +118,7 @@
           <div class="upload-icon">⌂</div>
           <h2>{% if selected %}Add audio{% else %}Upload audio{% endif %}</h2>
           <p>{% if selected %}Drop in another recording or adjust defaults.{% else %}Choose a file or drag it here.{% endif %}</p>
-          <form action="{{ url_for('transcribe_route') }}" method="post" enctype="multipart/form-data" class="transcribe-form">
+          <form action="{{ url_for('transcribe_route') }}" method="post" enctype="multipart/form-data" class="transcribe-form" id="transcribe-form">
             <label class="file-picker">
               <input type="file" id="audio-file-input" name="audio_file" accept="{{ upload_accept }}" required>
               <span>Choose file</span>
@@ -145,7 +145,8 @@
               </label>
             </div>
 
-            <button type="submit" class="transcribe-button">Transcribe</button>
+            <button type="submit" class="transcribe-button" id="transcribe-button">Transcribe</button>
+            <p class="transcribe-status" id="transcribe-status" aria-live="polite"></p>
             <p class="subtle">Transcription can take a few minutes depending on file length.</p>
           </form>
         </div>
@@ -178,6 +179,7 @@
             <button class="tab" data-tab-target="summary-pane">Summary</button>
             <div class="search-box">
               <input type="search" id="segment-search" placeholder="Search transcript...">
+              <small class="search-count" id="segment-search-count" aria-live="polite"></small>
             </div>
           </section>
 
@@ -208,6 +210,8 @@
               <div id="summary-cards">
               {% for item in selected.summary %}
               <article class="summary-card">{{ item }}</article>
+              {% else %}
+              <article class="summary-card summary-card--empty">No summary available yet.</article>
               {% endfor %}
               </div>
             </div>

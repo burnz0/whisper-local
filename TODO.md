@@ -2,26 +2,6 @@
 
 Prioritized backlog based on the current app, screenshot review, and `VISION.md`.
 
-## P1 - Make Daily Use Faster
-
-- [ ] Add a visible transcription progress state.
-  - Disable the form while transcription is running.
-  - Show a loading indicator and the selected file name.
-  - Prevent double-submit.
-- [ ] Preserve the selected sidebar panel.
-  - If the user opens Settings, keep Settings active after saving.
-- [ ] Add empty and loading states for summaries.
-  - Show when a summary is being refreshed.
-  - Show a useful fallback message when generation fails.
-- [ ] Improve transcript search.
-  - Show match count.
-  - Highlight matched text inside segments.
-  - Keep active audio segment visible while filtering is off.
-- [ ] Add keyboard shortcuts for review.
-  - Space toggles play/pause.
-  - Arrow keys seek.
-  - `/` focuses search.
-
 ## P2 - UI Polish From Screenshot Review
 
 - [ ] Reduce visual weight in the left upload panel once a transcript is selected.

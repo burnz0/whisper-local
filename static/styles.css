@@ -219,6 +219,12 @@ body::before {
   filter: brightness(1.06);
 }
 
+.transcribe-button:disabled {
+  cursor: wait;
+  filter: saturate(0.75);
+  opacity: 0.82;
+}
+
 .nav {
   display: grid;
   gap: 10px;
@@ -500,6 +506,12 @@ body::before {
   gap: 14px;
 }
 
+.transcribe-form.is-submitting .file-picker,
+.transcribe-form.is-submitting select {
+  pointer-events: none;
+  opacity: 0.72;
+}
+
 .file-picker input {
   position: absolute;
   opacity: 0;
@@ -518,6 +530,19 @@ body::before {
 #selected-file-name {
   display: block;
   text-align: center;
+}
+
+.transcribe-status {
+  min-height: 20px;
+  margin: 0;
+  color: var(--green);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.transcribe-status:empty {
+  display: none;
 }
 
 .transcribe-button {
@@ -643,6 +668,19 @@ input[type="search"] {
 .search-box {
   margin-left: auto;
   width: min(280px, 100%);
+  display: grid;
+  gap: 6px;
+}
+
+.search-count {
+  min-height: 16px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.search-count:empty {
+  display: none;
 }
 
 .pane {
@@ -768,6 +806,13 @@ input[type="search"] {
   color: rgba(243, 245, 248, 0.92);
 }
 
+.segment mark {
+  border-radius: 5px;
+  background: rgba(82, 207, 125, 0.28);
+  color: var(--text);
+  padding: 0 2px;
+}
+
 .summary-list {
   padding: 14px 20px 14px;
   display: grid;
@@ -802,6 +847,17 @@ input[type="search"] {
   background: rgba(255, 255, 255, 0.02);
   line-height: 1.58;
   font-size: 0.95rem;
+}
+
+.summary-card--loading,
+.summary-card--empty {
+  color: var(--muted);
+}
+
+.summary-card--error {
+  border-color: rgba(255, 120, 120, 0.18);
+  background: rgba(110, 28, 28, 0.18);
+  color: #ffd1d1;
 }
 
 .player-bar {

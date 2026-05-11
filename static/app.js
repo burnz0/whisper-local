@@ -15,9 +15,13 @@
   const summaryCards = document.getElementById("summary-cards");
   const summaryProviderLabel = document.getElementById("summary-provider-label");
   const titleEl = document.getElementById("record-title");
+  const transcribeForm = document.getElementById("transcribe-form");
+  const transcribeButton = document.getElementById("transcribe-button");
+  const transcribeStatus = document.getElementById("transcribe-status");
   const fileInput = document.getElementById("audio-file-input");
   const uploadCard = document.getElementById("upload-card");
   const fileNameLabel = document.getElementById("selected-file-name");
+  const searchCount = document.getElementById("segment-search-count");
   const sidebarNavButtons = document.querySelectorAll("[data-sidebar-target]");
   const sidebarPanels = document.querySelectorAll(".sidebar-panel");
   const confirmModal = document.getElementById("confirm-modal");
@@ -31,6 +35,13 @@
     extractive: "Fallback extractive"
   };
   const segmentRows = Array.from(document.querySelectorAll(".segment[data-start]"));
+  let lastActiveSegment = null;
+  const formatTime = (seconds) => {
+    const total = Math.max(0, Math.floor(seconds || 0));
+    const mins = Math.floor(total / 60);
+    const secs = total % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
 
   const setSidebarPanel = (targetId) => {
     sidebarPanels.forEach((panel) => {
@@ -39,10 +50,13 @@
     sidebarNavButtons.forEach((button) => {
       button.classList.toggle("active", button.dataset.sidebarTarget === targetId);
     });
+    window.localStorage.setItem("whisperLocal.sidebarPanel", targetId);
   };
 
   if (sidebarNavButtons.length) {
-    setSidebarPanel("history-panel");
+    const savedPanel = window.localStorage.getItem("whisperLocal.sidebarPanel");
+    const initialPanel = document.getElementById(savedPanel) ? savedPanel : "history-panel";
+    setSidebarPanel(initialPanel);
     sidebarNavButtons.forEach((button) => {
       button.addEventListener("click", () => {
         setSidebarPanel(button.dataset.sidebarTarget);
@@ -60,11 +74,19 @@
   };
 
   const syncActiveSegment = (timeSeconds) => {
+    let activeRow = null;
     segmentRows.forEach((row) => {
       const start = Number(row.dataset.start || 0);
       const end = Number(row.dataset.end || 0);
-      row.classList.toggle("is-active", timeSeconds >= start && timeSeconds < end);
+      const isActive = timeSeconds >= start && timeSeconds < end;
+      row.classList.toggle("is-active", isActive);
+      if (isActive) activeRow = row;
     });
+    const isFiltering = Boolean(search && search.value.trim());
+    if (activeRow && activeRow !== lastActiveSegment && !isFiltering) {
+      activeRow.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      lastActiveSegment = activeRow;
+    }
   };
 
   const askForConfirmation = ({ title, message, confirmLabel = "Delete" }) =>
@@ -104,13 +126,6 @@
     });
 
   if (audio && currentTime) {
-    const formatTime = (seconds) => {
-      const total = Math.max(0, Math.floor(seconds || 0));
-      const mins = Math.floor(total / 60);
-      const secs = total % 60;
-      return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-    };
-
     const syncProgress = () => {
       if (!progress) return;
       const duration = Number.isFinite(audio.duration) ? audio.duration : Number(progress.max || 0);
@@ -205,13 +220,61 @@
   });
 
   if (search) {
-    search.addEventListener("input", () => {
-      const query = search.value.trim().toLowerCase();
-      document.querySelectorAll(".segment").forEach((segment) => {
-        const haystack = segment.dataset.text || segment.textContent.toLowerCase();
-        segment.style.display = !query || haystack.includes(query) ? "" : "none";
+    const allSegments = Array.from(document.querySelectorAll(".segment"));
+    const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const clearHighlight = (segment) => {
+      const textEl = segment.querySelector("p");
+      if (!textEl || textEl.dataset.originalText === undefined) return;
+      textEl.textContent = textEl.dataset.originalText;
+    };
+    const highlightMatch = (segment, query) => {
+      const textEl = segment.querySelector("p");
+      if (!textEl) return;
+      const original = textEl.dataset.originalText || textEl.textContent;
+      textEl.dataset.originalText = original;
+      textEl.textContent = "";
+      if (!query) {
+        textEl.textContent = original;
+        return;
+      }
+
+      const pattern = new RegExp(`(${escapeRegExp(query)})`, "ig");
+      const parts = original.split(pattern);
+      parts.forEach((part) => {
+        if (!part) return;
+        if (part.toLowerCase() === query.toLowerCase()) {
+          const mark = document.createElement("mark");
+          mark.textContent = part;
+          textEl.appendChild(mark);
+        } else {
+          textEl.appendChild(document.createTextNode(part));
+        }
       });
-    });
+    };
+    const renderSearch = () => {
+      const query = search.value.trim().toLowerCase();
+      let matches = 0;
+      allSegments.forEach((segment) => {
+        const textEl = segment.querySelector("p");
+        const haystack = (textEl && (textEl.dataset.originalText || textEl.textContent) || segment.textContent).toLowerCase();
+        const isMatch = !query || haystack.includes(query);
+        segment.hidden = !isMatch;
+        if (query && isMatch) {
+          matches += 1;
+          highlightMatch(segment, query);
+        } else {
+          clearHighlight(segment);
+        }
+      });
+      if (searchCount) {
+        searchCount.textContent = query ? `${matches} match${matches === 1 ? "" : "es"}` : "";
+      }
+      if (!query) {
+        syncActiveSegment(audio ? audio.currentTime : 0);
+      }
+    };
+
+    search.addEventListener("input", renderSearch);
   }
 
   if (fileInput && fileNameLabel) {
@@ -247,6 +310,23 @@
         renderFileName(file);
       });
     }
+  }
+
+  if (transcribeForm && transcribeButton) {
+    transcribeForm.addEventListener("submit", (event) => {
+      if (transcribeForm.dataset.submitting === "true") {
+        event.preventDefault();
+        return;
+      }
+      const file = fileInput && fileInput.files && fileInput.files[0];
+      transcribeForm.dataset.submitting = "true";
+      transcribeForm.classList.add("is-submitting");
+      transcribeButton.disabled = true;
+      transcribeButton.textContent = "Transcribing...";
+      if (transcribeStatus) {
+        transcribeStatus.textContent = file ? `Transcribing ${file.name}.` : "Transcribing audio.";
+      }
+    });
   }
 
   if (copyButton && state) {
@@ -323,12 +403,20 @@
     refreshSummaryButton.addEventListener("click", async () => {
       refreshSummaryButton.disabled = true;
       refreshSummaryButton.textContent = "Refreshing...";
+      if (summaryCards) {
+        summaryCards.setAttribute("aria-busy", "true");
+        summaryCards.innerHTML = '<article class="summary-card summary-card--loading">Refreshing summary...</article>';
+      }
       try {
         const response = await fetch(`/transcripts/${state.recordId}/resummarize`, { method: "POST" });
         const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || "Summary refresh failed.");
+        }
         if (payload.ok && summaryCards && summaryProviderLabel) {
           summaryCards.innerHTML = "";
-          payload.summary.forEach((item) => {
+          const summaryItems = payload.summary && payload.summary.length ? payload.summary : ["No summary available yet."];
+          summaryItems.forEach((item) => {
             const article = document.createElement("article");
             article.className = "summary-card";
             article.textContent = item;
@@ -342,10 +430,67 @@
           }
           setActiveTab("summary-pane");
         }
+      } catch (error) {
+        if (summaryCards) {
+          summaryCards.innerHTML = "";
+          const article = document.createElement("article");
+          article.className = "summary-card summary-card--error";
+          article.textContent = error.message || "Summary refresh failed.";
+          summaryCards.appendChild(article);
+        }
       } finally {
+        if (summaryCards) {
+          summaryCards.removeAttribute("aria-busy");
+        }
         refreshSummaryButton.disabled = false;
         refreshSummaryButton.textContent = "Refresh summary";
       }
     });
   }
+
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    const isTyping =
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      (target instanceof HTMLElement && target.isContentEditable);
+    const modalOpen = confirmModal && !confirmModal.hidden;
+
+    if (modalOpen) return;
+
+    if (event.key === "/" && search && !isTyping) {
+      event.preventDefault();
+      search.focus();
+      return;
+    }
+
+    if (!audio || isTyping) return;
+
+    if (event.code === "Space") {
+      event.preventDefault();
+      if (toggle) {
+        toggle.click();
+      } else if (audio.paused) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+      return;
+    }
+
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      const delta = event.key === "ArrowLeft" ? -5 : 5;
+      const duration = Number.isFinite(audio.duration) ? audio.duration : Number(progress && progress.max ? progress.max : 0);
+      audio.currentTime = Math.max(0, Math.min(duration || Number.MAX_SAFE_INTEGER, audio.currentTime + delta));
+      if (currentTime) currentTime.textContent = formatTime(audio.currentTime);
+      if (progress) {
+        progress.value = String(audio.currentTime);
+        const percent = duration > 0 ? (audio.currentTime / duration) * 100 : 0;
+        progress.style.setProperty("--progress", `${percent}%`);
+      }
+      syncActiveSegment(audio.currentTime);
+    }
+  });
 })();
