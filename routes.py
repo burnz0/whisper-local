@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 from pathlib import Path
 
 from flask import Response, abort, jsonify, redirect, render_template, request, send_from_directory, url_for
 
-from config import LANGUAGES, MODELS, SUMMARY_PROVIDERS, TRANSCRIPT_DIR, UPLOAD_ACCEPT, UPLOAD_DIR
+from config import DATA_DIR, LANGUAGES, MODELS, SETTINGS_PATH, SUMMARY_MODEL_NAME, SUMMARY_PROVIDERS, TRANSCRIPT_DIR, UPLOAD_ACCEPT, UPLOAD_DIR
 from jobs import get_job, start_transcription_job
 from storage import (
     delete_record,
@@ -38,6 +40,51 @@ def build_stats(records) -> dict[str, str]:
         "duration": format_duration(total_duration),
         "last_model": records[0].model if records else "small",
     }
+
+
+def format_bytes(size: int) -> str:
+    value = float(max(size, 0))
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} B"
+        value /= 1024
+    return f"{value:.1f} GB"
+
+
+def capped_dir_size(path: Path, *, max_files: int = 5000) -> str:
+    if not path.exists():
+        return "0 B"
+
+    total = 0
+    scanned = 0
+    try:
+        for item in path.rglob("*"):
+            if item.is_file():
+                total += item.stat().st_size
+                scanned += 1
+                if scanned >= max_files:
+                    return f"{format_bytes(total)}+"
+    except OSError:
+        return "Unavailable"
+    return format_bytes(total)
+
+
+def build_local_info() -> list[dict[str, str]]:
+    cache_root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    whisper_cache = cache_root / "whisper"
+    hf_cache = Path(os.environ.get("HF_HOME", cache_root / "huggingface"))
+    disk_root = DATA_DIR if DATA_DIR.exists() else DATA_DIR.parent
+    usage = shutil.disk_usage(disk_root)
+    return [
+        {"label": "Storage path", "value": str(DATA_DIR)},
+        {"label": "Audio uploads", "value": str(UPLOAD_DIR)},
+        {"label": "Transcript exports", "value": str(TRANSCRIPT_DIR)},
+        {"label": "Settings file", "value": str(SETTINGS_PATH)},
+        {"label": "Whisper model cache", "value": f"{whisper_cache} ({capped_dir_size(whisper_cache)})"},
+        {"label": "Summary model", "value": SUMMARY_MODEL_NAME},
+        {"label": "Summary model cache", "value": f"{hf_cache} ({capped_dir_size(hf_cache)})"},
+        {"label": "Disk available", "value": format_bytes(usage.free)},
+    ]
 
 
 def friendly_transcription_error(exc: Exception) -> tuple[str, int]:
@@ -73,6 +120,7 @@ def render_workspace(
         default_model=default_model or settings["default_model"],
         default_language=default_language or settings["default_language"],
         stats=build_stats(records),
+        local_info=build_local_info(),
         upload_accept=UPLOAD_ACCEPT,
         settings=settings,
         error=error,

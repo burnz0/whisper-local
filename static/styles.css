@@ -302,6 +302,42 @@ body::before {
   margin-top: 2px;
 }
 
+.local-data {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.local-data__list {
+  display: grid;
+  gap: 8px;
+}
+
+.local-data__row {
+  display: grid;
+  gap: 4px;
+}
+
+.local-data__row > span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.local-data__row code {
+  display: block;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.028);
+  color: #dbe4f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  padding: 7px 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .library-list {
   display: grid;
   gap: 10px;

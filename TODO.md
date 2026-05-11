@@ -45,7 +45,7 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 
 - [x] Surface "runs locally" and "no cloud upload" in ingest flow.
 - [x] Keep local storage reassurance in persistent sidebar.
-- [ ] Show storage path, model location, cache size, disk usage, export path in settings.
+- [x] Show storage path, model location, cache size, disk usage, export path in settings.
 - [ ] Add delete local data controls.
 - [ ] Show active model and CPU/GPU processing mode during jobs.
 

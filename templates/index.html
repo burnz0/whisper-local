@@ -79,6 +79,19 @@
           </label>
           <button type="submit" class="secondary-action">Save settings</button>
         </form>
+        <div class="local-data">
+          <header>
+            <span>Local Data</span>
+          </header>
+          <div class="local-data__list">
+            {% for item in local_info %}
+            <div class="local-data__row">
+              <span>{{ item.label }}</span>
+              <code>{{ item.value }}</code>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
       </section>
 
       <section class="library sidebar-panel" id="history-panel">
