@@ -55,7 +55,7 @@ Prioritized backlog from the expert UX/product review. Product direction: a calm
 - [x] Continue reducing broad glow/gradient usage toward matte, precise surfaces.
 - [x] Standardize spacing on 4/8/12/16/24/32px tokens throughout.
 - [x] Strengthen typography hierarchy for transcript, metadata, timestamps, and controls.
-- [ ] Reduce corner-radius uniformity by role.
+- [x] Reduce corner-radius uniformity by role.
 - [x] Strengthen hover, selected, playing, focused, and active states.
 
 ## P2 - Knowledge Workspace Evolution
