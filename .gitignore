@@ -1,4 +1,7 @@
 data/uploads/
 data/transcripts/
+data/library.json
+data/settings.json
 __pycache__/
+.pycache/
 *.pyc

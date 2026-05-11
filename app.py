@@ -64,6 +64,17 @@ DEFAULT_SETTINGS = {
     "confirm_before_delete": True,
 }
 
+STOPWORDS = {
+    "aber", "als", "also", "am", "an", "auch", "auf", "aus", "bei", "bin", "bist", "da", "das",
+    "dass", "dein", "dem", "den", "der", "des", "die", "dir", "doch", "du", "ein", "eine", "einen",
+    "einer", "einem", "er", "es", "für", "hat", "hast", "hier", "ich", "ihr", "ihm", "im", "in",
+    "ist", "ja", "kein", "keine", "mal", "mein", "mich", "mir", "mit", "nicht", "nur", "oder",
+    "schon", "sehr", "sich", "sie", "so", "um", "und", "uns", "vom", "von", "war", "was", "weib",
+    "wenn", "wie", "wir", "wird", "wo", "zu", "zum", "zur",
+    "the", "and", "for", "with", "this", "that", "from", "you", "your", "have", "has", "are", "was",
+    "were", "into", "about", "they", "them", "their", "but", "not", "just", "what", "when", "where",
+}
+
 
 @dataclass
 class TranscriptRecord:
@@ -120,6 +131,34 @@ def slugify_title(value: str) -> str:
     return cleaned[:80] if cleaned else "New Transcript"
 
 
+def bounded_int(value: object, default: int, *, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(minimum, min(maximum, parsed))
+
+
+def normalize_settings(raw: dict | None = None) -> dict:
+    source = raw or {}
+    settings = dict(DEFAULT_SETTINGS)
+    settings.update(source)
+    settings["default_model"] = settings["default_model"] if settings["default_model"] in MODELS else DEFAULT_MODEL
+    settings["default_language"] = settings["default_language"] if settings["default_language"] in LANGUAGES else DEFAULT_LANGUAGE
+    settings["summary_provider"] = (
+        settings["summary_provider"] if settings["summary_provider"] in SUMMARY_PROVIDERS else DEFAULT_SETTINGS["summary_provider"]
+    )
+    settings["summary_sentences"] = bounded_int(
+        settings.get("summary_sentences"),
+        DEFAULT_SETTINGS["summary_sentences"],
+        minimum=1,
+        maximum=6,
+    )
+    settings["autoplay_on_seek"] = bool(settings.get("autoplay_on_seek", True))
+    settings["confirm_before_delete"] = bool(settings.get("confirm_before_delete", True))
+    return settings
+
+
 def generate_title_from_summary(summary: list[str], fallback: str) -> str:
     source = summary[0] if summary else fallback
     return keyword_title_from_text(source, fallback)
@@ -151,19 +190,11 @@ def normalize_title_candidate(text: str, fallback: str) -> str:
 
 
 def keyword_title_from_text(text: str, fallback: str) -> str:
-    stopwords = {
-        "aber", "auch", "auf", "aus", "bei", "bin", "bist", "das", "dass", "dein", "dem", "den", "der",
-        "des", "die", "dir", "doch", "du", "ein", "eine", "einen", "einer", "einem", "er", "es", "für",
-        "hat", "hast", "hier", "ich", "ihr", "ihm", "im", "in", "ist", "ja", "kein", "keine", "mal",
-        "mein", "mich", "mir", "mit", "nicht", "nur", "oder", "schon", "sehr", "sie", "so", "und",
-        "uns", "von", "war", "was", "wenn", "wie", "wir", "wird", "wo", "zu", "zum", "zur",
-        "the", "and", "for", "with", "this", "that", "from", "your", "have", "has", "are", "was", "were",
-    }
     words = re.findall(r"[A-Za-zÄÖÜäöüß]+", text)
     picked: list[str] = []
     for word in words:
         lowered = word.lower()
-        if lowered in stopwords or len(lowered) < 4:
+        if lowered in STOPWORDS or len(lowered) < 4:
             continue
         picked.append(word)
         if len(picked) == 4:
@@ -198,17 +229,7 @@ def format_duration(seconds: float) -> str:
 def load_settings() -> dict:
     ensure_dirs()
     raw = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
-    settings = dict(DEFAULT_SETTINGS)
-    settings.update(raw)
-    settings["default_model"] = settings["default_model"] if settings["default_model"] in MODELS else DEFAULT_MODEL
-    settings["default_language"] = settings["default_language"] if settings["default_language"] in LANGUAGES else DEFAULT_LANGUAGE
-    settings["summary_provider"] = (
-        settings["summary_provider"] if settings["summary_provider"] in SUMMARY_PROVIDERS else DEFAULT_SETTINGS["summary_provider"]
-    )
-    settings["summary_sentences"] = max(1, min(6, int(settings.get("summary_sentences", 3))))
-    settings["autoplay_on_seek"] = bool(settings.get("autoplay_on_seek", True))
-    settings["confirm_before_delete"] = bool(settings.get("confirm_before_delete", True))
-    return settings
+    return normalize_settings(raw)
 
 
 def save_settings(settings: dict) -> None:
@@ -224,21 +245,10 @@ def sentence_summary(text: str, max_items: int = 3) -> list[str]:
     if not parts:
         return [normalized[:180]]
 
-    stopwords = {
-        "aber", "als", "also", "am", "an", "auch", "auf", "aus", "bei", "bin", "bist", "da", "das",
-        "dass", "dein", "dem", "den", "der", "des", "die", "dir", "doch", "du", "ein", "eine", "einer",
-        "einem", "einen", "er", "es", "für", "hat", "hast", "hier", "ich", "ihr", "ihm", "im", "in",
-        "ist", "ja", "mal", "mein", "mich", "mir", "mit", "nicht", "nur", "oder", "schon", "sehr",
-        "sich", "sie", "so", "um", "und", "uns", "vom", "von", "war", "was", "weib", "wenn", "wie",
-        "wir", "wird", "wo", "zu", "zum", "zur",
-        "the", "and", "for", "with", "this", "that", "from", "you", "your", "have", "has", "are", "was",
-        "were", "into", "about", "they", "them", "their", "but", "not", "just", "what", "when", "where",
-    }
-
     tokens = re.findall(r"[a-zA-ZäöüÄÖÜß']+", normalized.lower())
     frequencies: dict[str, int] = {}
     for token in tokens:
-        if len(token) < 4 or token in stopwords:
+        if len(token) < 4 or token in STOPWORDS:
             continue
         frequencies[token] = frequencies.get(token, 0) + 1
 
@@ -540,6 +550,31 @@ def build_stats(records: list[TranscriptRecord]) -> dict[str, str]:
     }
 
 
+def render_workspace(
+    records: list[TranscriptRecord],
+    settings: dict,
+    *,
+    selected: TranscriptRecord | None = None,
+    default_model: str | None = None,
+    default_language: str | None = None,
+    error: str | None = None,
+):
+    return render_template(
+        "index.html",
+        records=records,
+        selected=selected,
+        models=MODELS,
+        languages=LANGUAGES,
+        summary_providers=SUMMARY_PROVIDERS,
+        default_model=default_model or settings["default_model"],
+        default_language=default_language or settings["default_language"],
+        stats=build_stats(records),
+        upload_accept=UPLOAD_ACCEPT,
+        settings=settings,
+        error=error,
+    )
+
+
 def create_transcript_from_upload(file_storage, model_name: str, language: str) -> TranscriptRecord:
     ensure_dirs()
     settings = load_settings()
@@ -623,20 +658,7 @@ def index():
     records = load_library()
     settings = load_settings()
     selected = records[0] if records else None
-    return render_template(
-        "index.html",
-        records=records,
-        selected=selected,
-        models=MODELS,
-        languages=LANGUAGES,
-        summary_providers=SUMMARY_PROVIDERS,
-        default_model=settings["default_model"],
-        default_language=settings["default_language"],
-        stats=build_stats(records),
-        upload_accept=UPLOAD_ACCEPT,
-        settings=settings,
-        error=None,
-    )
+    return render_workspace(records, settings, selected=selected)
 
 
 @app.get("/transcripts/<record_id>")
@@ -646,20 +668,7 @@ def transcript_detail(record_id: str):
     selected = next((record for record in records if record.id == record_id), None)
     if selected is None:
         abort(404)
-    return render_template(
-        "index.html",
-        records=records,
-        selected=selected,
-        models=MODELS,
-        languages=LANGUAGES,
-        summary_providers=SUMMARY_PROVIDERS,
-        default_model=settings["default_model"],
-        default_language=settings["default_language"],
-        stats=build_stats(records),
-        upload_accept=UPLOAD_ACCEPT,
-        settings=settings,
-        error=None,
-    )
+    return render_workspace(records, settings, selected=selected)
 
 
 @app.post("/transcribe")
@@ -669,21 +678,30 @@ def transcribe_route():
     model_name = request.form.get("model", settings["default_model"])
     language = request.form.get("language", settings["default_language"])
     upload = request.files.get("audio_file")
+    default_model = model_name if model_name in MODELS else settings["default_model"]
+    default_language = language if language in LANGUAGES else settings["default_language"]
+
+    if model_name not in MODELS or language not in LANGUAGES:
+        return (
+            render_workspace(
+                records,
+                settings,
+                selected=records[0] if records else None,
+                default_model=default_model,
+                default_language=default_language,
+                error="Please choose a supported model and language.",
+            ),
+            400,
+        )
 
     if upload is None or not upload.filename:
         return (
-            render_template(
-                "index.html",
+            render_workspace(
                 records=records,
-                selected=records[0] if records else None,
-                models=MODELS,
-                languages=LANGUAGES,
-                summary_providers=SUMMARY_PROVIDERS,
-                default_model=model_name if model_name in MODELS else DEFAULT_MODEL,
-                default_language=language if language in LANGUAGES else DEFAULT_LANGUAGE,
-                stats=build_stats(records),
-                upload_accept=UPLOAD_ACCEPT,
                 settings=settings,
+                selected=records[0] if records else None,
+                default_model=default_model,
+                default_language=default_language,
                 error="Please choose an audio file.",
             ),
             400,
@@ -693,18 +711,12 @@ def transcribe_route():
         record = create_transcript_from_upload(upload, model_name=model_name, language=language)
     except Exception as exc:
         return (
-            render_template(
-                "index.html",
+            render_workspace(
                 records=records,
-                selected=records[0] if records else None,
-                models=MODELS,
-                languages=LANGUAGES,
-                summary_providers=SUMMARY_PROVIDERS,
-                default_model=model_name if model_name in MODELS else DEFAULT_MODEL,
-                default_language=language if language in LANGUAGES else DEFAULT_LANGUAGE,
-                stats=build_stats(records),
-                upload_accept=UPLOAD_ACCEPT,
                 settings=settings,
+                selected=records[0] if records else None,
+                default_model=default_model,
+                default_language=default_language,
                 error=f"Transcription failed: {exc}",
             ),
             500,
@@ -742,16 +754,18 @@ def settings_route():
     summary_provider = request.form.get("summary_provider", settings["summary_provider"])
     summary_sentences = request.form.get("summary_sentences", settings["summary_sentences"])
 
-    settings["default_model"] = model if model in MODELS else DEFAULT_MODEL
-    settings["default_language"] = language if language in LANGUAGES else DEFAULT_LANGUAGE
-    settings["summary_provider"] = (
-        summary_provider if summary_provider in SUMMARY_PROVIDERS else DEFAULT_SETTINGS["summary_provider"]
+    save_settings(
+        normalize_settings(
+            {
+                "default_model": model,
+                "default_language": language,
+                "summary_provider": summary_provider,
+                "summary_sentences": summary_sentences,
+                "autoplay_on_seek": request.form.get("autoplay_on_seek") == "on",
+                "confirm_before_delete": request.form.get("confirm_before_delete") == "on",
+            }
+        )
     )
-    settings["summary_sentences"] = max(1, min(6, int(summary_sentences)))
-    settings["autoplay_on_seek"] = request.form.get("autoplay_on_seek") == "on"
-    settings["confirm_before_delete"] = request.form.get("confirm_before_delete") == "on"
-
-    save_settings(settings)
     return redirect(request.referrer or url_for("index"))
 
 
