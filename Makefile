@@ -1,37 +1,44 @@
-PYTHON ?= python3.12
+PYTHON ?= $(shell command -v python3.12 2>/dev/null || command -v python3.11 2>/dev/null || command -v python3 2>/dev/null)
 VENV ?= .venv
 HOST ?= 127.0.0.1
 PORT ?= 8765
+MODEL ?= small
+LANGUAGE ?= de
+
+VENV_PYTHON := $(VENV)/bin/python
+VENV_PIP := $(VENV)/bin/pip
 
 .PHONY: venv install install-core install-ml run check test migrate deps benchmark
 
-venv:
+$(VENV_PYTHON):
 	$(PYTHON) -m venv $(VENV)
+	$(VENV_PYTHON) -m pip install --upgrade pip
+
+venv: $(VENV_PYTHON)
 
 install-core: venv
-	$(VENV)/bin/python -m pip install --upgrade pip
-	$(VENV)/bin/pip install -r requirements-core.txt
+	$(VENV_PIP) install -r requirements-core.txt
 
 install-ml: install-core
-	$(VENV)/bin/pip install -r requirements-ml.txt
+	$(VENV_PIP) install -r requirements-ml.txt
 
 install: install-ml
 
-run:
-	$(VENV)/bin/python app.py --host $(HOST) --port $(PORT)
+run: install-core
+	$(VENV_PYTHON) app.py --host $(HOST) --port $(PORT)
 
 check:
-	PYTHONPYCACHEPREFIX=.pycache $(VENV)/bin/python -m py_compile app.py
-	PYTHONPYCACHEPREFIX=.pycache $(VENV)/bin/python -m unittest discover -s tests
+	PYTHONPYCACHEPREFIX=.pycache $(VENV_PYTHON) -m py_compile app.py
+	PYTHONPYCACHEPREFIX=.pycache $(VENV_PYTHON) -m unittest discover -s tests
 
 test:
-	PYTHONPYCACHEPREFIX=.pycache $(VENV)/bin/python -m unittest discover -s tests
+	PYTHONPYCACHEPREFIX=.pycache $(VENV_PYTHON) -m unittest discover -s tests
 
 migrate:
-	$(VENV)/bin/python app.py --migrate-library
+	$(VENV_PYTHON) app.py --migrate-library
 
 deps:
-	$(VENV)/bin/python app.py --check-deps
+	$(VENV_PYTHON) app.py --check-deps
 
 benchmark:
-	$(VENV)/bin/python benchmarks.py --audio "$(AUDIO)" --model "$(MODEL)" --language "$(LANGUAGE)"
+	$(VENV_PYTHON) benchmarks.py --audio "$(AUDIO)" --model "$(MODEL)" --language "$(LANGUAGE)"

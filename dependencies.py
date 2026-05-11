@@ -18,7 +18,10 @@ class DependencyStatus:
 
 
 def module_installed(name: str) -> bool:
-    return importlib.util.find_spec(name) is not None
+    try:
+        return importlib.util.find_spec(name) is not None
+    except ModuleNotFoundError:
+        return False
 
 
 def runtime_dependency_report() -> list[DependencyStatus]:

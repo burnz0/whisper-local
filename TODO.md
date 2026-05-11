@@ -27,7 +27,7 @@ Fresh technical backlog from the May 2026 stack review. Product direction remain
 
 ## P1 - Local Analysis And Summaries
 
-- [ ] Create a local analysis provider interface separate from transcription.
+- [x] Create a local analysis provider interface separate from transcription.
 - [x] Treat the current German mT5 summarizer as an optional baseline, not the long-term product bet.
 - [x] Benchmark local instruction models for summaries, action items, entities, and title generation.
 - [x] Keep extractive summaries as a reliable fallback path.
@@ -35,11 +35,11 @@ Fresh technical backlog from the May 2026 stack review. Product direction remain
 
 ## P1 - Search And Knowledge Storage
 
-- [ ] Explore semantic search for local knowledge retrieval.
-- [ ] Choose a local embedding model and storage strategy for transcript segments and notes.
-- [ ] Decide whether semantic search is enough on JSON or whether it should trigger a SQLite migration.
+- [x] Explore semantic search for local knowledge retrieval.
+- [x] Choose a local embedding model and storage strategy for transcript segments and notes.
+- [x] Decide whether semantic search is enough on JSON or whether it should trigger a SQLite migration.
 - [ ] If migrating to SQLite, model transcripts, segments, tags, collections, notes, speakers, summaries, and extracted entities explicitly.
-- [ ] Preserve import/export paths so existing JSON-backed libraries can migrate safely.
+- [x] Preserve import/export paths so existing JSON-backed libraries can migrate safely.
 
 ## P2 - Product Architecture
 

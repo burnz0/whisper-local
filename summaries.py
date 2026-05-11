@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 
+from analysis import SummaryRequest, SummaryResult
 from config import (
     DEFAULT_SETTINGS,
     FAST_INSTRUCTION_MODEL_NAME,
@@ -637,13 +638,13 @@ def generate_title_with_instruction_model(text: str, language: str, fallback: st
     return candidate
 
 
-def generate_summary(text: str, language: str, settings: dict) -> tuple[list[str], str]:
-    provider = settings["summary_provider"]
-    max_items = int(settings["summary_sentences"])
+def generate_summary_for_request(request: SummaryRequest) -> SummaryResult:
+    provider = request.provider
+    max_items = bounded_int(request.density, DEFAULT_SETTINGS["summary_sentences"], minimum=1, maximum=6)
     if provider in {"local_instruction", "local_instruction_quality"}:
         try:
             model_name = QUALITY_INSTRUCTION_MODEL_NAME if provider == "local_instruction_quality" else FAST_INSTRUCTION_MODEL_NAME
-            return summarize_with_instruction_model(text, language, max_items, model_name=model_name), provider
+            return SummaryResult(summarize_with_instruction_model(request.text, request.language, max_items, model_name=model_name), provider)
         except Exception as exc:
             message = str(exc).strip().splitlines()[0] if str(exc).strip() else exc.__class__.__name__
             if "not installed" in message or "unavailable" in message or "quality checks" in message:
@@ -652,11 +653,22 @@ def generate_summary(text: str, language: str, settings: dict) -> tuple[list[str
                 logger.warning("summary provider failed; falling back to extractive: %s", message)
     if provider == "local_transformer":
         try:
-            return summarize_with_local_model(text, language, max_items), provider
+            return SummaryResult(summarize_with_local_model(request.text, request.language, max_items), provider)
         except Exception as exc:
             message = str(exc).strip().splitlines()[0] if str(exc).strip() else exc.__class__.__name__
             if "not installed" in message or "unavailable" in message or "quality checks" in message:
                 logger.info("summary provider unavailable; using extractive: %s", message)
             else:
                 logger.warning("summary provider failed; falling back to extractive: %s", message)
-    return sentence_summary(text, max_items=max_items, language=language), "extractive"
+    return SummaryResult(sentence_summary(request.text, max_items=max_items, language=request.language), "extractive")
+
+
+def generate_summary(text: str, language: str, settings: dict) -> tuple[list[str], str]:
+    request = SummaryRequest(
+        text=text,
+        language=language,
+        provider=settings["summary_provider"],
+        density=settings["summary_sentences"],
+    )
+    result = generate_summary_for_request(request)
+    return result.items, result.provider

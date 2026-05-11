@@ -58,8 +58,10 @@ class OpenAIWhisperBackend:
         self._model_cache: dict[str, object] = {}
 
     def supported_models(self) -> tuple[str, ...]:
-        available = set(getattr(whisper, "_MODELS", {}).keys()) if whisper is not None else set()
-        configured = [model for model in MODELS if not available or model in available]
+        if whisper is None:
+            return ()
+        available = set(getattr(whisper, "_MODELS", {}).keys())
+        configured = [model for model in MODELS if model in available]
         return tuple(configured)
 
     def active_device_label(self) -> str:
