@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Whisper Local</title>
+  <link rel="icon" href="{{ url_for('favicon') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
@@ -27,75 +28,11 @@
       </button>
 
       <nav class="nav" id="sidebar-nav">
-        <button class="nav-item active" type="button" data-sidebar-target="history-panel">History</button>
-        <button class="nav-item" type="button" data-sidebar-target="settings-panel">Settings</button>
+        <button class="nav-item active" type="button" data-workspace-mode="history">History</button>
+        <button class="nav-item" type="button" data-workspace-mode="settings">Settings</button>
       </nav>
 
-      <section class="sidebar-settings sidebar-panel" id="settings-panel" hidden>
-        <header>
-          <span>App Settings</span>
-        </header>
-        <form action="{{ url_for('settings_route') }}" method="post" class="sidebar-settings__form">
-              <label>
-                <span>Default model</span>
-                <select name="default_model">
-              {% for model in models %}
-              <option value="{{ model }}" {% if model == settings.default_model %}selected{% endif %}>{{ model|capitalize }}</option>
-              {% endfor %}
-            </select>
-            <small class="field-hint">Tiny is fastest, Small is more accurate.</small>
-          </label>
-          <label>
-            <span>Default language</span>
-            <select name="default_language">
-              {% for code, label in languages.items() %}
-              <option value="{{ code }}" {% if code == settings.default_language %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label>
-            <span>Summary density</span>
-            <select name="summary_sentences">
-              {% for count in range(1, 7) %}
-              <option value="{{ count }}" {% if count == settings.summary_sentences %}selected{% endif %}>Level {{ count }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label>
-            <span>Summary engine</span>
-            <select name="summary_provider">
-              {% for code, label in summary_providers.items() %}
-              <option value="{{ code }}" {% if code == settings.summary_provider %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" name="autoplay_on_seek" {% if settings.autoplay_on_seek %}checked{% endif %}>
-            <span>Autoplay when jumping to a segment</span>
-          </label>
-          <label class="toggle-row">
-            <input type="checkbox" name="confirm_before_delete" {% if settings.confirm_before_delete %}checked{% endif %}>
-            <span>Ask before deleting transcripts</span>
-          </label>
-          <button type="submit" class="secondary-action">Save settings</button>
-        </form>
-        <div class="local-data">
-          <header>
-            <span>Local Data</span>
-          </header>
-          <div class="local-data__list">
-            {% for item in local_info %}
-            <div class="local-data__row">
-              <span>{{ item.label }}</span>
-              <code>{{ item.value }}</code>
-            </div>
-            {% endfor %}
-          </div>
-          <button class="danger-action" type="button" id="delete-local-data-button">Delete saved transcripts</button>
-        </div>
-      </section>
-
-      <section class="library sidebar-panel" id="history-panel">
+      <section class="library" id="history-panel">
         <header>
           <span>Recent Transcriptions</span>
         </header>
@@ -166,17 +103,119 @@
           <span>Elapsed: {{ job.elapsed_seconds }}s</span>
           <span>Estimate: {{ job.estimated_duration }}</span>
         </div>
-        <button class="secondary-action job-cancel-button" type="button" id="job-cancel-button" {% if job.status != "queued" %}hidden{% endif %}>Cancel queued job</button>
+        <button class="secondary-action job-cancel-button" type="button" id="job-cancel-button" {% if not job.can_cancel %}hidden{% endif %}>Cancel queued job</button>
+      </div>
+      {% endif %}
+      {% if import_batch %}
+      <div class="flash import-flash" id="import-status" data-import-id="{{ import_batch.id }}">
+        <div class="import-flash__header">
+          <div>
+            <strong id="import-status-title">
+              {% if import_batch.status == "complete" %}Import complete{% else %}Importing audio{% endif %}
+            </strong>
+            <span id="import-status-message">
+              {{ import_batch.finished_count }} of {{ import_batch.total_count }} file{% if import_batch.total_count != 1 %}s{% endif %} finished.
+              {% if import_batch.skipped_count %}{{ import_batch.skipped_count }} skipped as duplicate{% if import_batch.skipped_count != 1 %}s{% endif %}.{% endif %}
+            </span>
+          </div>
+          <a class="secondary-action" id="import-open-first" href="{% if import_batch.first_record_id %}{{ url_for('transcript_detail', record_id=import_batch.first_record_id) }}{% else %}#{% endif %}" {% if not import_batch.first_record_id %}hidden{% endif %}>Open transcript</a>
+        </div>
+        <progress class="import-progress" id="import-progress" max="100" value="{{ import_batch.progress_percent }}" aria-label="Import progress"></progress>
+        <div class="import-meta" id="import-meta">
+          <span>{{ import_batch.complete_count }} complete</span>
+          <span>{{ import_batch.skipped_count }} skipped</span>
+          <span>{{ import_batch.running_count }} running</span>
+          <span>{{ import_batch.queued_count }} queued</span>
+          <span>{{ import_batch.failed_count }} failed</span>
+        </div>
+        <div class="import-job-list" id="import-job-list">
+          {% for item in import_batch.jobs %}
+          <div class="import-job-row" data-import-job="{{ item.id }}" {% if item.skip_reason %}title="{{ item.skip_reason }}"{% endif %}>
+            <span class="import-job-row__name">{{ item.source_name }}</span>
+            <span class="import-job-row__status" data-status="{{ item.status }}">{{ item.status }}</span>
+          </div>
+          {% endfor %}
+        </div>
       </div>
       {% endif %}
 
-      <section class="composer">
+      <section class="settings-workspace" id="settings-workspace" hidden>
+        <div class="settings-workspace__header">
+          <div>
+            <span class="eyebrow">Preferences</span>
+            <h2>App Settings</h2>
+          </div>
+          <button class="secondary-action" type="button" data-workspace-mode="history">Done</button>
+        </div>
+        <div class="settings-grid">
+          <form action="{{ url_for('settings_route') }}" method="post" class="settings-workspace__form">
+            <label>
+              <span>Default model</span>
+              <select name="default_model">
+                {% for model in models %}
+                <option value="{{ model }}" {% if model == settings.default_model %}selected{% endif %}>{{ model|capitalize }}</option>
+                {% endfor %}
+              </select>
+              <small class="field-hint">Tiny is fastest, Small is more accurate.</small>
+            </label>
+            <label>
+              <span>Default language</span>
+              <select name="default_language">
+                {% for code, label in languages.items() %}
+                <option value="{{ code }}" {% if code == settings.default_language %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <span>Summary density</span>
+              <select name="summary_sentences">
+                {% for count in range(1, 7) %}
+                <option value="{{ count }}" {% if count == settings.summary_sentences %}selected{% endif %}>Level {{ count }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <span>Summary engine</span>
+              <select name="summary_provider">
+                {% for code, label in summary_providers.items() %}
+                <option value="{{ code }}" {% if code == settings.summary_provider %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" name="autoplay_on_seek" {% if settings.autoplay_on_seek %}checked{% endif %}>
+              <span>Autoplay when jumping to a segment</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" name="confirm_before_delete" {% if settings.confirm_before_delete %}checked{% endif %}>
+              <span>Ask before deleting transcripts</span>
+            </label>
+            <button type="submit" class="secondary-action">Save settings</button>
+          </form>
+          <div class="local-data">
+            <header>
+              <span>Local Data</span>
+            </header>
+            <div class="local-data__list">
+              {% for item in local_info %}
+              <div class="local-data__row">
+                <span>{{ item.label }}</span>
+                <code title="{{ item.value }}">{{ item.value }}</code>
+              </div>
+              {% endfor %}
+            </div>
+            <button class="danger-action" type="button" id="delete-local-data-button">Delete saved transcripts</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="composer" id="workspace-composer">
         <div class="detail-panel">
           {% if selected %}
           <header class="detail-header">
             <div>
               <div class="title-row">
-                <h2 id="record-title">{{ selected.title }}</h2>
+                <h2 id="record-title" title="{{ selected.title }}">{{ selected.title }}</h2>
                 <button class="icon-button" id="rename-button" data-record-id="{{ selected.id }}" title="Rename title" aria-label="Rename title">
                   <span aria-hidden="true">✎</span>
                 </button>
@@ -409,8 +448,8 @@
             <p>Files never leave your device. The selected Whisper model runs locally and saves the transcript to this workspace.</p>
             <form action="{{ url_for('transcribe_route') }}" method="post" enctype="multipart/form-data" class="transcribe-form" id="transcribe-form">
               <label class="file-picker">
-                <input type="file" id="audio-file-input" name="audio_file" accept="{{ upload_accept }}" required>
-                <span>Choose file</span>
+                <input type="file" id="audio-file-input" name="audio_file" accept="{{ upload_accept }}" multiple required>
+                <span>Choose files</span>
               </label>
               <small id="selected-file-name">Supported formats: ogg, mp3, wav, m4a, flac, webm</small>
 
@@ -477,6 +516,11 @@
   {% if job %}
   <script>
     window.APP_JOB_STATE = {{ job|tojson }};
+  </script>
+  {% endif %}
+  {% if import_batch %}
+  <script>
+    window.APP_IMPORT_STATE = {{ import_batch|tojson }};
   </script>
   {% endif %}
   <div class="drop-target" id="drop-target" aria-hidden="true">

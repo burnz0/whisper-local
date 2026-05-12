@@ -10,11 +10,12 @@ from flask import Response, abort, jsonify, redirect, render_template, request, 
 from config import DATA_DIR, LANGUAGES, SETTINGS_PATH, SUMMARY_MODEL_NAME, SUMMARY_PROVIDERS, TRANSCRIPT_DIR, UPLOAD_ACCEPT, UPLOAD_DIR
 from dependencies import runtime_dependency_report
 from errors import friendly_transcription_error
-from jobs import cancel_job, get_job, start_transcription_job
+from jobs import cancel_job, get_import_batch, get_job, start_transcription_batch
 from storage import (
     delete_record,
     delete_all_records,
     get_record,
+    is_allowed_file,
     json_export,
     load_library,
     load_settings,
@@ -179,6 +180,7 @@ def render_workspace(
     default_language: str | None = None,
     error: str | None = None,
     job=None,
+    import_batch=None,
 ):
     return render_template(
         "index.html",
@@ -199,10 +201,16 @@ def render_workspace(
         settings=settings,
         error=error,
         job=job,
+        import_batch=import_batch,
     )
 
 
 def register_routes(app) -> None:
+    @app.get("/favicon.ico")
+    def favicon():
+        svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#0f141c"/><path d="M7 16h2m3-6v12m4-16v20m4-14v8m4-12v16" stroke="#52cf7d" stroke-width="2.4" stroke-linecap="round"/></svg>"""
+        return Response(svg, mimetype="image/svg+xml")
+
     @app.get("/")
     def index():
         records = load_library()
@@ -225,7 +233,7 @@ def register_routes(app) -> None:
         settings = load_settings()
         model_name = request.form.get("model", settings["default_model"])
         language = request.form.get("language", settings["default_language"])
-        upload = request.files.get("audio_file")
+        uploads = [upload for upload in request.files.getlist("audio_file") if upload and upload.filename]
         models = model_choices()
         default_model = model_name if model_name in models else settings["default_model"]
         default_language = language if language in LANGUAGES else settings["default_language"]
@@ -243,7 +251,7 @@ def register_routes(app) -> None:
                 400,
             )
 
-        if upload is None or not upload.filename:
+        if not uploads:
             return (
                 render_workspace(
                     records=records,
@@ -256,9 +264,23 @@ def register_routes(app) -> None:
                 400,
             )
 
+        unsupported_files = [Path(upload.filename or "upload").name for upload in uploads if not is_allowed_file(upload.filename or "")]
+        if unsupported_files:
+            return (
+                render_workspace(
+                    records=records,
+                    settings=settings,
+                    selected=records[0] if records else None,
+                    default_model=default_model,
+                    default_language=default_language,
+                    error=f"Unsupported file type: {', '.join(unsupported_files[:3])}.",
+                ),
+                400,
+            )
+
         try:
-            audio_path, transcript_id, source_name = save_upload(upload)
-            job = start_transcription_job(audio_path, transcript_id, source_name, model_name, language)
+            saved_uploads = [save_upload(upload) for upload in uploads]
+            batch = start_transcription_batch(saved_uploads, model_name, language)
         except Exception as exc:
             error, status_code = friendly_transcription_error(exc)
             return (
@@ -273,7 +295,30 @@ def register_routes(app) -> None:
                 status_code,
             )
 
-        return redirect(url_for("job_detail", job_id=job.id))
+        redirect_url = url_for("import_detail", batch_id=batch.id)
+        if request.headers.get("X-Requested-With") == "fetch":
+            return jsonify({"ok": True, "redirect_url": redirect_url, "batch": batch.as_dict()})
+        return redirect(redirect_url)
+
+    @app.get("/imports/<batch_id>")
+    def import_detail(batch_id: str):
+        batch = get_import_batch(batch_id)
+        if batch is None:
+            abort(404)
+        records = load_library()
+        settings = load_settings()
+        selected = records[0] if records else None
+        return render_workspace(records, settings, selected=selected, import_batch=batch.as_dict())
+
+    @app.get("/imports/<batch_id>.json")
+    def import_status(batch_id: str):
+        batch = get_import_batch(batch_id)
+        if batch is None:
+            return jsonify({"ok": False, "error": "Import batch not found."}), 404
+        payload = batch.as_dict()
+        if payload.get("first_record_id"):
+            payload["first_record_url"] = url_for("transcript_detail", record_id=payload["first_record_id"])
+        return jsonify({"ok": True, "batch": payload})
 
     @app.get("/jobs/<job_id>")
     def job_detail(job_id: str):

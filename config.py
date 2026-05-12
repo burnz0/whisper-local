@@ -21,7 +21,7 @@ ALLOWED_EXTENSIONS = {ext.strip(".") for ext in UPLOAD_ACCEPT.split(",")}
 SUMMARY_PROVIDERS = {
     "local_instruction_quality": "Quality local instruction (Qwen3 1.7B)",
     "local_instruction": "Fast local instruction (Qwen3 0.6B)",
-    "extractive": "Reliable extractive",
+    "extractive": "Extractive fallback",
     "local_transformer": "Experimental German mT5",
 }
 SUMMARY_MODEL_NAME = "deutsche-telekom/mt5-small-sum-de-mit-v1"

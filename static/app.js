@@ -1,6 +1,7 @@
 (function () {
   const state = window.APP_STATE || null;
   const jobState = window.APP_JOB_STATE || null;
+  const importState = window.APP_IMPORT_STATE || null;
   const audio = document.getElementById("audio-player");
   const toggle = document.getElementById("player-toggle");
   const currentTime = document.getElementById("current-time");
@@ -47,19 +48,29 @@
   const jobStatusMessage = document.getElementById("job-status-message");
   const jobMeta = jobStatus ? jobStatus.querySelector(".job-meta") : null;
   const jobCancelButton = document.getElementById("job-cancel-button");
+  const importStatus = document.getElementById("import-status");
+  const importStatusTitle = document.getElementById("import-status-title");
+  const importStatusMessage = document.getElementById("import-status-message");
+  const importProgress = document.getElementById("import-progress");
+  const importMeta = document.getElementById("import-meta");
+  const importJobList = document.getElementById("import-job-list");
+  const importOpenFirst = document.getElementById("import-open-first");
   const transcribeForm = document.getElementById("transcribe-form");
   const transcribeButton = document.getElementById("transcribe-button");
   const transcribeStatus = document.getElementById("transcribe-status");
   const fileInput = document.getElementById("audio-file-input");
   const uploadCard = document.getElementById("upload-card");
   const uploadPanel = document.getElementById("upload-panel");
+  const workspaceComposer = document.getElementById("workspace-composer");
+  const settingsWorkspace = document.getElementById("settings-workspace");
+  const detailPanel = document.querySelector(".detail-panel");
+  const sidebar = document.querySelector(".sidebar");
   const contextBackdrop = document.getElementById("context-backdrop");
   const closeUploadPanel = document.getElementById("close-upload-panel");
   const fileNameLabel = document.getElementById("selected-file-name");
   const openUploadButtons = document.querySelectorAll("[data-open-upload]");
   const searchCount = document.getElementById("segment-search-count");
-  const sidebarNavButtons = document.querySelectorAll("[data-sidebar-target]");
-  const sidebarPanels = document.querySelectorAll(".sidebar-panel");
+  const workspaceModeButtons = document.querySelectorAll("[data-workspace-mode]");
   const confirmModal = document.getElementById("confirm-modal");
   const confirmModalTitle = document.getElementById("confirm-modal-title");
   const confirmModalMessage = document.getElementById("confirm-modal-message");
@@ -70,7 +81,7 @@
     local_instruction_quality: "Quality local instruction (Qwen3 1.7B)",
     local_instruction: "Fast local instruction (Qwen3 0.6B)",
     local_transformer: "Experimental German mT5",
-    extractive: "Reliable extractive"
+    extractive: "Extractive fallback"
   };
   const segmentRows = Array.from(document.querySelectorAll(".segment[data-start]"));
   let lastActiveSegment = null;
@@ -84,6 +95,15 @@
     const mins = Math.floor(total / 60);
     const secs = total % 60;
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+  const statusLabel = (status) => {
+    if (status === "queued") return "Queued";
+    if (status === "running") return "Transcribing";
+    if (status === "complete") return "Complete";
+    if (status === "skipped") return "Skipped";
+    if (status === "failed") return "Failed";
+    if (status === "canceled") return "Canceled";
+    return status || "Unknown";
   };
   const copyTextToClipboard = async (text) => {
     if (navigator.clipboard && window.isSecureContext) {
@@ -109,21 +129,13 @@
   };
 
   if (jobState && jobStatus) {
-    const jobStageLabel = (status) => {
-      if (status === "queued") return "Queued";
-      if (status === "running") return "Transcribing";
-      if (status === "complete") return "Complete";
-      if (status === "failed") return "Failed";
-      if (status === "canceled") return "Canceled";
-      return status;
-    };
     const renderJobMeta = (job) => {
       if (!jobMeta) return;
       jobMeta.innerHTML = "";
       [
         `Model: ${job.model}`,
         `Mode: ${job.processing_mode || "CPU"}`,
-        `Stage: ${jobStageLabel(job.status)}`,
+        `Stage: ${statusLabel(job.status)}`,
         `Elapsed: ${formatTime(job.elapsed_seconds || 0)}`,
         `Estimate: ${job.estimated_duration || "Local processing time varies"}`,
         `File: ${job.source_size_label || "Unknown size"}`
@@ -174,6 +186,7 @@
       }
     };
     if (jobCancelButton) {
+      jobCancelButton.hidden = !jobState.can_cancel;
       jobCancelButton.addEventListener("click", async () => {
         jobCancelButton.disabled = true;
         jobCancelButton.textContent = "Canceling...";
@@ -195,23 +208,111 @@
     window.setTimeout(pollJob, 800);
   }
 
-  const setSidebarPanel = (targetId) => {
-    sidebarPanels.forEach((panel) => {
-      panel.hidden = panel.id !== targetId;
+  if (importState && importStatus) {
+    const renderImportBatch = (batch) => {
+      const total = batch.total_count || 0;
+      const finished = batch.finished_count || 0;
+      const failed = batch.failed_count || 0;
+      const canceled = batch.canceled_count || 0;
+      const skipped = batch.skipped_count || 0;
+      const isComplete = total > 0 && finished >= total;
+      if (importStatusTitle) {
+        importStatusTitle.textContent = isComplete ? "Import complete" : "Importing audio";
+      }
+      if (importStatusMessage) {
+        const issueCount = failed + canceled;
+        let suffix = ".";
+        if (skipped && issueCount) {
+          suffix = `; ${skipped} skipped as duplicate${skipped === 1 ? "" : "s"}; ${issueCount} need attention.`;
+        } else if (skipped) {
+          suffix = `; ${skipped} skipped as duplicate${skipped === 1 ? "" : "s"}.`;
+        } else if (issueCount) {
+          suffix = `; ${issueCount} need attention.`;
+        }
+        importStatusMessage.textContent =
+          `${finished} of ${total} file${total === 1 ? "" : "s"} finished` + suffix;
+      }
+      if (importProgress) {
+        importProgress.value = Number(batch.progress_percent || 0);
+      }
+      if (importMeta) {
+        importMeta.innerHTML = "";
+        [
+          `${batch.complete_count || 0} complete`,
+          `${batch.skipped_count || 0} skipped`,
+          `${batch.running_count || 0} running`,
+          `${batch.queued_count || 0} queued`,
+          `${batch.failed_count || 0} failed`
+        ].forEach((text) => {
+          const span = document.createElement("span");
+          span.textContent = text;
+          importMeta.appendChild(span);
+        });
+      }
+      if (importJobList) {
+        importJobList.innerHTML = "";
+        (batch.jobs || []).forEach((job) => {
+          const row = document.createElement("div");
+          const name = document.createElement("span");
+          const status = document.createElement("span");
+          row.className = "import-job-row";
+          row.dataset.importJob = job.id;
+          name.className = "import-job-row__name";
+          status.className = "import-job-row__status";
+          status.dataset.status = job.status;
+          name.textContent = job.source_name || "Audio file";
+          status.textContent = statusLabel(job.status);
+          if (job.skip_reason) row.title = job.skip_reason;
+          row.append(name, status);
+          importJobList.appendChild(row);
+        });
+      }
+      const firstUrl = batch.first_record_url || (batch.first_record_id ? `/transcripts/${batch.first_record_id}` : "");
+      if (importOpenFirst) {
+        importOpenFirst.hidden = !firstUrl;
+        if (firstUrl) importOpenFirst.href = firstUrl;
+      }
+      return isComplete;
+    };
+
+    const pollImport = async () => {
+      try {
+        const response = await fetch(`/imports/${importState.id}.json`);
+        const payload = await response.json();
+        if (!payload.ok) throw new Error(payload.error || "Import status unavailable.");
+        const isComplete = renderImportBatch(payload.batch);
+        if (!isComplete) {
+          window.setTimeout(pollImport, 1500);
+        }
+      } catch (error) {
+        if (importStatusTitle) importStatusTitle.textContent = "Import status unavailable";
+        if (importStatusMessage) importStatusMessage.textContent = error.message || "Could not read import status.";
+      }
+    };
+
+    renderImportBatch(importState);
+    if (importState.status !== "complete") {
+      window.setTimeout(pollImport, 800);
+    }
+  }
+
+  const setWorkspaceMode = (mode) => {
+    const nextMode = mode === "settings" ? "settings" : "history";
+    if (settingsWorkspace) settingsWorkspace.hidden = nextMode !== "settings";
+    if (workspaceComposer) workspaceComposer.hidden = nextMode === "settings";
+    workspaceModeButtons.forEach((button) => {
+      button.classList.toggle("active", button.dataset.workspaceMode === nextMode);
     });
-    sidebarNavButtons.forEach((button) => {
-      button.classList.toggle("active", button.dataset.sidebarTarget === targetId);
-    });
-    window.localStorage.setItem("whisperLocal.sidebarPanel", targetId);
+    document.body.dataset.workspaceMode = nextMode;
+    window.localStorage.setItem("whisperLocal.workspaceMode", nextMode);
   };
 
-  if (sidebarNavButtons.length) {
-    const savedPanel = window.localStorage.getItem("whisperLocal.sidebarPanel");
-    const initialPanel = document.getElementById(savedPanel) ? savedPanel : "history-panel";
-    setSidebarPanel(initialPanel);
-    sidebarNavButtons.forEach((button) => {
+  if (workspaceModeButtons.length) {
+    const savedMode = window.localStorage.getItem("whisperLocal.workspaceMode");
+    setWorkspaceMode(savedMode === "settings" ? "settings" : "history");
+    workspaceModeButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        setSidebarPanel(button.dataset.sidebarTarget);
+        setWorkspaceMode(button.dataset.workspaceMode);
       });
     });
   }
@@ -662,13 +763,50 @@
     updateSearchControls();
   }
 
+  const getFocusableElements = (root) => {
+    if (!root) return [];
+    return Array.from(
+      root.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((element) => element instanceof HTMLElement && element.offsetParent !== null);
+  };
+  let uploadPanelLastFocus = null;
+
+  const setBackgroundInert = (isInert) => {
+    [sidebar, detailPanel, settingsWorkspace].forEach((element) => {
+      if (!element) return;
+      if (isInert) {
+        element.setAttribute("inert", "");
+        element.setAttribute("aria-hidden", "true");
+      } else {
+        element.removeAttribute("inert");
+        element.removeAttribute("aria-hidden");
+      }
+    });
+  };
+
   const setUploadPanelOpen = (isOpen) => {
     if (!uploadPanel || !contextBackdrop) return;
+    if (isOpen) {
+      uploadPanelLastFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setWorkspaceMode("history");
+    }
     uploadPanel.hidden = !isOpen;
     contextBackdrop.hidden = !isOpen;
     uploadPanel.classList.toggle("is-open", isOpen);
-    if (isOpen && fileInput) {
-      window.setTimeout(() => fileInput.focus(), 80);
+    uploadPanel.setAttribute("role", "dialog");
+    uploadPanel.setAttribute("aria-modal", String(isOpen));
+    document.body.classList.toggle("is-upload-open", isOpen);
+    setBackgroundInert(isOpen);
+    if (isOpen) {
+      window.setTimeout(() => {
+        const firstFocusable = getFocusableElements(uploadPanel)[0];
+        (fileInput || firstFocusable || uploadPanel).focus();
+      }, 80);
+    } else if (uploadPanelLastFocus && document.contains(uploadPanelLastFocus)) {
+      uploadPanelLastFocus.focus();
+      uploadPanelLastFocus = null;
     }
   };
 
@@ -684,22 +822,36 @@
     contextBackdrop.addEventListener("click", () => setUploadPanelOpen(false));
   }
 
+  if (uploadPanel && !uploadPanel.hidden) {
+    setUploadPanelOpen(true);
+  }
+
   if (fileInput && fileNameLabel) {
-    const renderFileName = (file) => {
-      fileNameLabel.textContent = file ? `Selected: ${file.name}` : "Supported formats: ogg, mp3, wav, m4a, flac, webm";
+    const renderFileName = (files) => {
+      const selectedFiles = Array.from(files || []);
+      if (!selectedFiles.length) {
+        fileNameLabel.textContent = "Supported formats: ogg, mp3, wav, m4a, flac, webm";
+        return;
+      }
+      if (selectedFiles.length === 1) {
+        fileNameLabel.textContent = `Selected: ${selectedFiles[0].name}`;
+        return;
+      }
+      fileNameLabel.textContent = `Selected: ${selectedFiles.length} files`;
     };
 
-    const assignFile = (file) => {
-      if (!file) return;
+    const assignFiles = (files) => {
+      const selectedFiles = Array.from(files || []);
+      if (!selectedFiles.length) return;
       const transfer = new DataTransfer();
-      transfer.items.add(file);
+      selectedFiles.forEach((file) => transfer.items.add(file));
       fileInput.files = transfer.files;
-      renderFileName(file);
+      renderFileName(fileInput.files);
       setUploadPanelOpen(true);
     };
 
     fileInput.addEventListener("change", () => {
-      renderFileName(fileInput.files && fileInput.files[0]);
+      renderFileName(fileInput.files);
     });
 
     if (uploadCard) {
@@ -718,8 +870,7 @@
       });
 
       uploadCard.addEventListener("drop", (event) => {
-        const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
-        assignFile(file);
+        assignFiles(event.dataTransfer && event.dataTransfer.files);
       });
     }
 
@@ -748,23 +899,49 @@
       event.preventDefault();
       dragDepth = 0;
       document.body.classList.remove("is-dragging-file");
-      assignFile(event.dataTransfer.files && event.dataTransfer.files[0]);
+      assignFiles(event.dataTransfer.files);
     });
   }
 
   if (transcribeForm && transcribeButton) {
-    transcribeForm.addEventListener("submit", (event) => {
+    transcribeForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
       if (transcribeForm.dataset.submitting === "true") {
-        event.preventDefault();
         return;
       }
-      const file = fileInput && fileInput.files && fileInput.files[0];
+      const selectedFiles = Array.from((fileInput && fileInput.files) || []);
+      if (!selectedFiles.length) {
+        if (transcribeStatus) transcribeStatus.textContent = "Choose at least one audio file.";
+        return;
+      }
       transcribeForm.dataset.submitting = "true";
       transcribeForm.classList.add("is-submitting");
       transcribeButton.disabled = true;
-      transcribeButton.textContent = "Transcribing locally...";
+      transcribeButton.textContent = selectedFiles.length === 1 ? "Starting import..." : `Starting ${selectedFiles.length} imports...`;
       if (transcribeStatus) {
-        transcribeStatus.textContent = file ? `Running local transcription for ${file.name}. No upload occurs.` : "Running local transcription.";
+        transcribeStatus.textContent =
+          selectedFiles.length === 1
+            ? `Queueing local transcription for ${selectedFiles[0].name}.`
+            : `Queueing ${selectedFiles.length} local transcriptions.`;
+      }
+      try {
+        const response = await fetch(transcribeForm.action, {
+          method: "POST",
+          body: new FormData(transcribeForm),
+          headers: { "X-Requested-With": "fetch" }
+        });
+        const contentType = response.headers.get("Content-Type") || "";
+        const payload = contentType.includes("application/json") ? await response.json() : null;
+        if (!response.ok || !payload || !payload.ok) {
+          throw new Error((payload && payload.error) || "Import could not be started.");
+        }
+        window.location.href = payload.redirect_url;
+      } catch (error) {
+        transcribeForm.dataset.submitting = "false";
+        transcribeForm.classList.remove("is-submitting");
+        transcribeButton.disabled = false;
+        transcribeButton.textContent = "Transcribe locally";
+        if (transcribeStatus) transcribeStatus.textContent = error.message || "Import could not be started.";
       }
     });
   }
@@ -831,6 +1008,7 @@
       const payload = await response.json();
       if (payload.ok) {
         titleEl.textContent = payload.title;
+        titleEl.title = payload.title;
         const sidebarTitle = document.querySelector(`[data-record-title="${state.recordId}"]`);
         if (sidebarTitle) sidebarTitle.textContent = payload.title;
       }
@@ -1183,6 +1361,7 @@
           );
           if (payload.title && titleEl) {
             titleEl.textContent = payload.title;
+            titleEl.title = payload.title;
             const sidebarTitle = document.querySelector(`[data-record-title="${state.recordId}"]`);
             if (sidebarTitle) sidebarTitle.textContent = payload.title;
           }
@@ -1215,8 +1394,24 @@
       target instanceof HTMLSelectElement ||
       (target instanceof HTMLElement && target.isContentEditable);
     const modalOpen = confirmModal && !confirmModal.hidden;
+    const uploadOpen = uploadPanel && !uploadPanel.hidden;
 
     if (modalOpen) return;
+
+    if (uploadOpen && event.key === "Tab") {
+      const focusable = getFocusableElements(uploadPanel);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+      return;
+    }
 
     if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
       event.preventDefault();
@@ -1224,7 +1419,7 @@
       return;
     }
 
-    if (event.key === "Escape" && uploadPanel && !uploadPanel.hidden) {
+    if (event.key === "Escape" && uploadOpen) {
       event.preventDefault();
       setUploadPanelOpen(false);
       return;

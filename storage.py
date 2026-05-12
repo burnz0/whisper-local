@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
+from hashlib import sha256
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -22,9 +24,11 @@ from config import (
     UPLOAD_DIR,
 )
 from summaries import (
+    PENDING_SUMMARY,
     generate_summary,
     generate_title_from_summary,
     generate_title_with_instruction_model,
+    low_confidence_summary_text,
     normalize_settings,
     paragraphize_summary,
     sentence_summary,
@@ -57,6 +61,7 @@ class TranscriptRecord:
     tags: list[str]
     collection: str
     notes: str
+    source_hash: str = ""
 
     @property
     def audio_path(self) -> Path:
@@ -65,6 +70,15 @@ class TranscriptRecord:
     @property
     def transcript_path(self) -> Path:
         return TRANSCRIPT_DIR / self.transcript_filename
+
+
+@dataclass(frozen=True)
+class SavedUpload:
+    audio_path: Path
+    transcript_id: str
+    source_name: str
+    source_hash: str
+    source_size_bytes: int
 
 
 def ensure_dirs() -> None:
@@ -181,9 +195,99 @@ def coerce_float(value: object, default: float = 0.0) -> float:
         return default
 
 
+TRAILING_ARTIFACT_TERMS = {
+    "amara",
+    "caption",
+    "captions",
+    "copyright",
+    "credits",
+    "glimpse",
+    "interrupted",
+    "ready",
+    "subscribe",
+    "subtitle",
+    "subtitles",
+    "transcript",
+    "untertitel",
+}
+
+
+def segment_text(segment: dict) -> str:
+    return str(segment.get("text", "")).strip()
+
+
+def looks_like_trailing_artifact(text: str) -> bool:
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    if not cleaned:
+        return True
+    lowered = cleaned.lower()
+    words = re.findall(r"[A-Za-zÄÖÜäöüß]+", lowered)
+    if re.search(r"[\u3040-\u30ff\u3400-\u9fff]", cleaned):
+        return True
+    if any(term in lowered for term in TRAILING_ARTIFACT_TERMS):
+        return True
+    if re.search(r"\b(?:www\.|https?://|@\w+)\b", lowered):
+        return True
+    if len(words) <= 4 and re.search(r"\d", cleaned):
+        return True
+    punctuation_count = len(re.findall(r"[^A-Za-zÄÖÜäöüß0-9\s]", cleaned))
+    if len(words) <= 4 and punctuation_count >= 2:
+        return True
+    return False
+
+
+def can_join_trailing_artifact_block(text: str) -> bool:
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    if not cleaned:
+        return True
+    words = re.findall(r"[A-Za-zÄÖÜäöüß]+", cleaned)
+    lowered_words = [word.lower() for word in words]
+    if len(words) <= 3 and len(set(lowered_words)) < len(lowered_words):
+        return True
+    if len(words) <= 7 and cleaned[-1:] not in ".!?":
+        return True
+    return False
+
+
+def trim_trailing_artifact_segments(segments: list[dict]) -> list[dict]:
+    if len(segments) < 4:
+        return segments
+
+    window_start = max(0, len(segments) - 10)
+    tail_segments = segments[window_start:]
+    suspicious_offsets = [
+        offset
+        for offset, segment in enumerate(tail_segments)
+        if looks_like_trailing_artifact(segment_text(segment))
+    ]
+    if len(suspicious_offsets) < 2 or suspicious_offsets[-1] < len(tail_segments) - 3:
+        return segments
+
+    trim_start = window_start + suspicious_offsets[0]
+    while trim_start > 0 and can_join_trailing_artifact_block(segment_text(segments[trim_start - 1])):
+        trim_start -= 1
+    if trim_start <= 0:
+        return segments
+    return segments[:trim_start]
+
+
+def clean_transcription_tail(text: str, segments: list[dict]) -> tuple[str, list[dict]]:
+    cleaned_segments = trim_trailing_artifact_segments(segments)
+    if len(cleaned_segments) == len(segments):
+        return text, segments
+    return build_transcript_text(cleaned_segments, text), cleaned_segments
+
+
+def safe_title_fallback(filename: str, created_at: str = "") -> str:
+    stem = Path(filename or "upload").stem.replace("_", " ").strip()
+    date_prefix = str(created_at or "")[:10].strip()
+    return slugify_title(f"{date_prefix} {stem}".strip() or stem or "New Transcript")
+
+
 def record_from_payload(item: dict) -> TranscriptRecord:
     transcript_text = str(item.get("transcript_text", ""))
     filename = str(item.get("filename", "upload"))
+    created_at = str(item.get("created_at", ""))
     transcript_id = str(item.get("id") or uuid.uuid4().hex[:12])
     language = str(item.get("language", DEFAULT_LANGUAGE))
     model = str(item.get("model", DEFAULT_MODEL))
@@ -197,20 +301,27 @@ def record_from_payload(item: dict) -> TranscriptRecord:
         next_segment["highlighted"] = bool(next_segment.get("highlighted", False))
         next_segment["speaker"] = normalize_speaker(next_segment.get("speaker", ""))
         segments.append(next_segment)
+    transcript_text, segments = clean_transcription_tail(transcript_text, segments)
     summary = item.get("summary") if isinstance(item.get("summary"), list) else []
     tags = item.get("tags") if isinstance(item.get("tags"), list) else []
 
     if not summary:
         summary = paragraphize_summary(sentence_summary(transcript_text, language=language), max_chars=320)
+    if summary and all(low_confidence_summary_text(str(entry), language) for entry in summary):
+        summary = [PENDING_SUMMARY]
+    title_source = str(item.get("title_source", "manual"))
+    title = slugify_title(str(item.get("title") or Path(filename).stem))
+    if title_source == "auto" and low_confidence_summary_text(title, language):
+        title = safe_title_fallback(filename, created_at)
 
     return TranscriptRecord(
         id=transcript_id,
-        title=slugify_title(str(item.get("title") or Path(filename).stem)),
-        title_source=str(item.get("title_source", "manual")),
+        title=title,
+        title_source=title_source,
         filename=filename,
         stored_filename=str(item.get("stored_filename", "")),
         transcript_filename=str(item.get("transcript_filename") or f"{transcript_id}.txt"),
-        created_at=str(item.get("created_at", "")),
+        created_at=created_at,
         model=model if model in (supported_models() or MODELS) else DEFAULT_MODEL,
         language=language if language in LANGUAGES else DEFAULT_LANGUAGE,
         duration_seconds=coerce_float(item.get("duration_seconds")),
@@ -221,6 +332,7 @@ def record_from_payload(item: dict) -> TranscriptRecord:
         tags=normalize_tags(tags),
         collection=normalize_collection(item.get("collection", DEFAULT_COLLECTION)),
         notes=str(item.get("notes", "")),
+        source_hash=str(item.get("source_hash") or ""),
     )
 
 
@@ -239,7 +351,31 @@ def persist_record(record: TranscriptRecord) -> None:
     record.transcript_path.write_text(record.transcript_text, encoding="utf-8")
 
 
-def save_upload(file_storage) -> tuple[Path, str, str]:
+def file_sha256(path: Path) -> str:
+    digest = sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def find_duplicate_record(source_hash: str) -> TranscriptRecord | None:
+    if not source_hash:
+        return None
+    for record in load_library():
+        if record.source_hash == source_hash:
+            return record
+        if record.source_hash or not record.audio_path.exists():
+            continue
+        try:
+            if file_sha256(record.audio_path) == source_hash:
+                return record
+        except OSError:
+            continue
+    return None
+
+
+def save_upload(file_storage) -> SavedUpload:
     ensure_dirs()
     source_name = Path(file_storage.filename or "upload").name
     if not is_allowed_file(source_name):
@@ -252,12 +388,26 @@ def save_upload(file_storage) -> tuple[Path, str, str]:
     with audio_path.open("wb") as target:
         copyfileobj(file_storage.stream, target)
 
-    return audio_path, transcript_id, source_name
+    source_size_bytes = audio_path.stat().st_size if audio_path.exists() else 0
+    return SavedUpload(
+        audio_path=audio_path,
+        transcript_id=transcript_id,
+        source_name=source_name,
+        source_hash=file_sha256(audio_path),
+        source_size_bytes=source_size_bytes,
+    )
 
 
-def create_transcript_from_audio(audio_path: Path, transcript_id: str, source_name: str, model_name: str, language: str) -> TranscriptRecord:
+def create_transcript_from_audio(
+    audio_path: Path,
+    transcript_id: str,
+    source_name: str,
+    model_name: str,
+    language: str,
+    source_hash: str = "",
+) -> TranscriptRecord:
     text, segments, duration = transcribe_file(audio_path, model_name=model_name, language=language)
-    title = slugify_title(Path(source_name).stem.replace("_", " "))
+    text, segments = clean_transcription_tail(text, segments)
     created_at = datetime.now().isoformat(timespec="seconds")
     transcript_filename = f"{transcript_id}.txt"
     summary, summary_provider = generate_summary(
@@ -265,7 +415,7 @@ def create_transcript_from_audio(audio_path: Path, transcript_id: str, source_na
         language=language,
         settings={"summary_provider": "extractive", "summary_sentences": 2},
     )
-    generated_title = generate_title_from_summary(summary, title)
+    generated_title = generate_title_from_summary(summary, safe_title_fallback(source_name, created_at))
 
     record = TranscriptRecord(
         id=transcript_id,
@@ -285,6 +435,7 @@ def create_transcript_from_audio(audio_path: Path, transcript_id: str, source_na
         tags=[],
         collection=DEFAULT_COLLECTION,
         notes="",
+        source_hash=source_hash,
     )
     persist_record(record)
     return record
@@ -313,8 +464,15 @@ def update_record_title_with_instruction_model(record_id: str) -> TranscriptReco
 
 
 def create_transcript_from_upload(file_storage, model_name: str, language: str) -> TranscriptRecord:
-    audio_path, transcript_id, source_name = save_upload(file_storage)
-    return create_transcript_from_audio(audio_path, transcript_id, source_name, model_name, language)
+    saved_upload = save_upload(file_storage)
+    return create_transcript_from_audio(
+        saved_upload.audio_path,
+        saved_upload.transcript_id,
+        saved_upload.source_name,
+        model_name,
+        language,
+        source_hash=saved_upload.source_hash,
+    )
 
 
 def rename_record(record_id: str, title: str) -> bool:

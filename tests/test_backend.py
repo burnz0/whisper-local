@@ -1,11 +1,13 @@
 import json
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
 from unittest import mock
 
 import app
 import jobs
+import routes
 import summaries
 import storage
 
@@ -136,6 +138,39 @@ class BackendBehaviorTest(unittest.TestCase):
         )
         self.assertGreaterEqual(len(dense_summary), len(summary))
 
+    def test_extractive_summary_rejects_low_confidence_capitalized_artifacts(self):
+        summary, provider = app.generate_summary(
+            "Jugendermens, Zünnschneuer sowie Kanarein.",
+            "de",
+            {"summary_provider": "extractive", "summary_sentences": 3},
+        )
+        title = app.generate_title_from_summary(summary, "2026-05-12 sample audio")
+
+        self.assertEqual(provider, "extractive")
+        self.assertEqual(summary, ["Summary pending."])
+        self.assertEqual(title, "2026-05-12 sample audio")
+
+    def test_trailing_asr_artifact_block_is_trimmed(self):
+        segments = [
+            {"id": 0, "text": "Wir sprechen ueber die Beziehung."},
+            {"id": 1, "text": "Ja, aber schon zusammen eroertern."},
+            {"id": 2, "text": "gut, gut."},
+            {"id": 3, "text": "Willst du schon ein bisschen drama"},
+            {"id": 4, "text": "wie kann ready."},
+            {"id": 5, "text": "Und ich will heute den Raum geben."},
+            {"id": 6, "text": "情 glimpse es nicht zu einigen."},
+            {"id": 7, "text": "Juenger 1.2."},
+            {"id": 8, "text": "Gobeide interrupted."},
+        ]
+        text, cleaned_segments = storage.clean_transcription_tail(
+            " ".join(segment["text"] for segment in segments),
+            segments,
+        )
+
+        self.assertEqual([segment["id"] for segment in cleaned_segments], [0, 1])
+        self.assertIn("zusammen eroertern", text)
+        self.assertNotIn("interrupted", text)
+
     def test_duration_formatting(self):
         self.assertEqual(app.format_duration(0), "00:00")
         self.assertEqual(app.format_duration(65.9), "01:05")
@@ -161,6 +196,115 @@ class BackendBehaviorTest(unittest.TestCase):
         finally:
             with jobs._LOCK:
                 jobs._JOBS.pop(job.id, None)
+
+    def test_transcribe_route_accepts_multiple_files_as_import_batch(self):
+        class FakeBatch:
+            id = "batch123"
+
+            def as_dict(self):
+                return {
+                    "id": self.id,
+                    "status": "running",
+                    "total_count": 2,
+                    "finished_count": 0,
+                    "complete_count": 0,
+                    "failed_count": 0,
+                    "canceled_count": 0,
+                    "skipped_count": 0,
+                    "running_count": 0,
+                    "queued_count": 2,
+                    "progress_percent": 0,
+                    "first_record_id": None,
+                    "jobs": [],
+                }
+
+        saved_uploads = [
+            storage.SavedUpload(Path("one.ogg"), "one", "one.ogg", "hash-one", 3),
+            storage.SavedUpload(Path("two.mp3"), "two", "two.mp3", "hash-two", 3),
+        ]
+        with mock.patch.object(routes, "save_upload", side_effect=saved_uploads) as save_mock, mock.patch.object(
+            routes, "start_transcription_batch", return_value=FakeBatch()
+        ) as batch_mock:
+            response = app.app.test_client().post(
+                "/transcribe",
+                data={
+                    "model": app.DEFAULT_MODEL,
+                    "language": app.DEFAULT_LANGUAGE,
+                    "audio_file": [(BytesIO(b"one"), "one.ogg"), (BytesIO(b"two"), "two.mp3")],
+                },
+                headers={"X-Requested-With": "fetch"},
+                content_type="multipart/form-data",
+            )
+
+        payload = response.get_json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(save_mock.call_count, 2)
+        self.assertEqual(len(batch_mock.call_args.args[0]), 2)
+        self.assertEqual(payload["redirect_url"], "/imports/batch123")
+
+    def test_duplicate_import_is_skipped_without_transcription(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            library_path = root / "library.json"
+            settings_path = root / "settings.json"
+            uploads_dir = root / "uploads"
+            transcripts_dir = root / "transcripts"
+            uploads_dir.mkdir()
+            transcripts_dir.mkdir()
+            duplicate_path = uploads_dir / "duplicate.ogg"
+            duplicate_path.write_bytes(b"same audio")
+            library_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "id": "existing123",
+                            "title": "Existing",
+                            "filename": "recording.ogg",
+                            "stored_filename": "existing123.ogg",
+                            "transcript_filename": "existing123.txt",
+                            "created_at": "2026-05-11T12:00:00",
+                            "model": "base",
+                            "language": "de",
+                            "duration_seconds": 12,
+                            "transcript_text": "Hallo Welt.",
+                            "summary": ["Hallo Welt."],
+                            "summary_provider": "extractive",
+                            "segments": [],
+                            "source_hash": "duplicate-hash",
+                        }
+                    ],
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            settings_path.write_text(json.dumps(app.DEFAULT_SETTINGS), encoding="utf-8")
+            saved_upload = storage.SavedUpload(duplicate_path, "new123", "recording-copy.ogg", "duplicate-hash", duplicate_path.stat().st_size)
+
+            with jobs._LOCK:
+                jobs._JOBS.clear()
+                jobs._BATCHES.clear()
+
+            with mock.patch.object(storage, "DATA_DIR", root), mock.patch.object(storage, "UPLOAD_DIR", uploads_dir), mock.patch.object(
+                storage, "TRANSCRIPT_DIR", transcripts_dir
+            ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path), mock.patch.object(
+                jobs, "create_transcript_from_audio", side_effect=AssertionError("duplicate should not transcribe")
+            ):
+                batch = jobs.start_transcription_batch([saved_upload], "base", "de")
+                payload = batch.as_dict()
+
+            self.assertEqual(payload["status"], "complete")
+            self.assertEqual(payload["skipped_count"], 1)
+            self.assertEqual(payload["finished_count"], 1)
+            self.assertEqual(payload["first_record_id"], "existing123")
+            self.assertEqual(payload["jobs"][0]["status"], "skipped")
+            self.assertEqual(payload["jobs"][0]["record_id"], "existing123")
+            self.assertFalse(duplicate_path.exists())
+
+            with jobs._LOCK:
+                jobs._JOBS.clear()
+                jobs._BATCHES.clear()
 
     def test_friendly_transcription_errors(self):
         unsupported, unsupported_status = app.friendly_transcription_error(ValueError("This file format is not supported yet."))

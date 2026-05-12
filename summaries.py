@@ -29,10 +29,10 @@ STOPWORDS = {
     "dass", "dein", "dem", "den", "der", "des", "die", "dir", "doch", "du", "ein", "eine", "einen",
     "einer", "einem", "er", "es", "für", "hat", "hast", "hier", "ich", "ihr", "ihm", "im", "in",
     "ist", "ja", "kein", "keine", "mal", "mein", "mich", "mir", "mit", "nicht", "nur", "oder",
-    "schon", "sehr", "sich", "sie", "so", "um", "und", "uns", "vom", "von", "war", "was", "weib",
+    "schon", "sehr", "sich", "sie", "so", "sowie", "um", "und", "uns", "vom", "von", "war", "was", "weib",
     "wenn", "wie", "wir", "wird", "wo", "zu", "zum", "zur",
     "abschnitt", "aussage", "beschreibt", "dieser", "diese", "dieses", "gespraech", "gespräch",
-    "dinge", "genau", "gestern", "halt", "kernaussage", "kurzfassung", "punkt", "punkte", "satz", "thema", "transkript", "wichtig",
+    "dinge", "geht", "gehts", "genau", "gestern", "halt", "kernaussage", "kurzfassung", "punkt", "punkte", "satz", "thema", "transkript", "wichtig",
     "wichtige", "wichtiger", "wichtigen",
     "the", "and", "for", "with", "this", "that", "from", "you", "your", "have", "has", "are", "was",
     "were", "into", "about", "they", "them", "their", "but", "not", "just", "what", "when", "where",
@@ -40,6 +40,7 @@ STOPWORDS = {
 }
 
 MIN_SUMMARY_WORDS = 5
+PENDING_SUMMARY = "Summary pending."
 
 GERMAN_CONCEPTS = [
     ("Wertschätzung", r"\b(toll|klug|gebildet|erfolgreich|zuverlaessig|zuverlässig|schätze|schaetze|sozial|zielstrebig)\b"),
@@ -103,6 +104,8 @@ def normalize_settings(raw: dict | None = None) -> dict:
 
 def generate_title_from_summary(summary: list[str], fallback: str) -> str:
     for item in summary:
+        if is_pending_summary(item) or low_confidence_summary_text(item, "de"):
+            continue
         title = sentence_title_from_text(item, fallback)
         if title.lower() != slugify_title(fallback).lower():
             return title
@@ -172,7 +175,12 @@ def join_human_list(items: list[str], language: str) -> str:
 
 
 def domain_terms(text: str, limit: int = 3) -> list[str]:
-    words = re.findall(r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{3,}\b", text)
+    words = []
+    for match in re.finditer(r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{3,}\b", text):
+        prefix = text[: match.start()].rstrip()
+        if not prefix or prefix.endswith((".", "!", "?", "\n")):
+            continue
+        words.append(match.group(0))
     terms: dict[str, dict[str, object]] = {}
     for index, word in enumerate(words):
         lowered = word.lower()
@@ -198,7 +206,7 @@ def detected_concepts(text: str, language: str, limit: int = 4) -> list[str]:
 def concept_summary(text: str, language: str, max_items: int = 3) -> list[str]:
     concept_limit = 2 if max_items <= 1 else 4 if max_items <= 3 else 6
     concepts = detected_concepts(text, language, limit=concept_limit)
-    if language == "de" and (not concepts or concepts == ["nächste Schritte"]):
+    if language == "de" and concepts == ["nächste Schritte"]:
         concepts = domain_terms(text) + concepts
     if not concepts:
         return []
@@ -270,6 +278,44 @@ def keyword_title_from_text(text: str, fallback: str) -> str:
     return slugify_title(" ".join(picked))
 
 
+def is_pending_summary(text: str) -> bool:
+    return re.sub(r"\s+", " ", text).strip().lower().rstrip(".") in {
+        PENDING_SUMMARY.lower().rstrip("."),
+        "summary unavailable",
+        "no summary available yet",
+        "keine zusammenfassung verfügbar",
+    }
+
+
+def meaningful_word_details(text: str) -> list[tuple[str, bool]]:
+    details = []
+    for word in re.findall(r"\b[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß-]*\b", text):
+        normalized = word.lower().strip("-")
+        if len(normalized) < 4 or normalized in STOPWORDS:
+            continue
+        details.append((word, word[:1].isupper()))
+    return details
+
+
+def low_confidence_summary_text(text: str, language: str) -> bool:
+    cleaned = normalize_transcript_for_summary(text)
+    if not cleaned:
+        return True
+    if detected_concepts(cleaned, language):
+        return False
+    details = meaningful_word_details(cleaned)
+    if not details:
+        return True
+    capitalized_count = sum(1 for _word, is_capitalized in details if is_capitalized)
+    lowercase_count = len(details) - capitalized_count
+    starts_with_topic_shell = bool(re.match(r"^(es geht um|it covers)\b", cleaned, flags=re.IGNORECASE))
+    if starts_with_topic_shell and capitalized_count >= 2 and lowercase_count == 0:
+        return True
+    if len(details) <= 5 and capitalized_count >= max(2, len(details) - 1) and lowercase_count == 0:
+        return True
+    return False
+
+
 def summary_looks_like_transcript(summary_text: str, transcript_text: str) -> bool:
     summary_words = summary_text.lower().split()
     transcript_words = transcript_text.lower().split()
@@ -312,7 +358,9 @@ def format_duration(seconds: float) -> str:
 def sentence_summary(text: str, max_items: int = 3, language: str = "de") -> list[str]:
     normalized = normalize_transcript_for_summary(text)
     if not normalized:
-        return ["No summary available yet."]
+        return [PENDING_SUMMARY]
+    if low_confidence_summary_text(normalized, language):
+        return [PENDING_SUMMARY]
     concepts = concept_summary(normalized, language, max_items=max_items)
     if concepts:
         return concepts[:max_items]
@@ -541,7 +589,7 @@ def generate_title_with_local_model(summary: list[str], language: str, fallback:
     prompt = build_title_prompt(" ".join(summary), language)
     decoded = run_summary_generation(tokenizer, model, prompt, max_new_tokens=24)
     candidate = normalize_title_candidate(decoded, fallback)
-    if len(candidate.split()) > 6 or len(candidate) > 48:
+    if len(candidate.split()) > 6 or len(candidate) > 48 or low_confidence_summary_text(candidate, language):
         return keyword_title_from_text(" ".join(summary), fallback)
     return candidate
 
@@ -633,7 +681,7 @@ def generate_title_with_instruction_model(text: str, language: str, fallback: st
         )
     decoded = run_instruction_generation(tokenizer, model, prompt, max_new_tokens=40)
     candidate = normalize_title_candidate(decoded, fallback)
-    if len(candidate.split()) < 2 or candidate.lower() == slugify_title(fallback).lower():
+    if len(candidate.split()) < 2 or candidate.lower() == slugify_title(fallback).lower() or low_confidence_summary_text(candidate, language):
         return generate_title_from_summary(sentence_summary(cleaned, max_items=2, language=language), fallback)
     return candidate
 
