@@ -20,8 +20,8 @@ Fresh technical backlog from the May 2026 stack review. Product direction remain
 
 - [x] Introduce a transcription backend interface so model loading, transcription, timing, and errors are backend-specific.
 - [x] Keep `openai-whisper` as the baseline backend until replacements are benchmarked.
-- [ ] Benchmark `faster-whisper` for local CPU/GPU performance, memory use, model download size, and transcript quality.
-- [ ] Benchmark `whisper.cpp` for Apple Silicon/CPU performance, quantized models, install friction, and integration cost.
+- [x] Benchmark `faster-whisper` for local CPU performance, install friction, and transcript quality.
+- [x] Benchmark `whisper.cpp` for Apple Silicon performance, GGML models, install friction, and integration cost.
 - [x] Add `turbo` as an optional Whisper model tier if the selected backend supports it cleanly.
 - [ ] Revisit default model choice after benchmarking `small`, `medium`, and `turbo` on representative German and English audio.
 

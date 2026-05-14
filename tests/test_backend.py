@@ -188,8 +188,20 @@ class BackendBehaviorTest(unittest.TestCase):
         )
         recommendation = benchmarks.recommend_backend(
             [
-                {"backend": "openai-whisper", "status": "complete", "model": "small", "realtime_factor": 1.2},
-                {"backend": "openai-whisper", "status": "complete", "model": "turbo", "realtime_factor": 0.8},
+                {
+                    "backend": "openai-whisper",
+                    "status": "complete",
+                    "model": "small",
+                    "realtime_factor": 1.2,
+                    "quality": {"expected_terms_found_count": 3, "expected_terms_total": 4},
+                },
+                {
+                    "backend": "openai-whisper",
+                    "status": "complete",
+                    "model": "turbo",
+                    "realtime_factor": 0.8,
+                    "quality": {"expected_terms_found_count": 2, "expected_terms_total": 4},
+                },
                 {"backend": "faster-whisper", "status": "unavailable"},
             ]
         )
@@ -198,8 +210,21 @@ class BackendBehaviorTest(unittest.TestCase):
         self.assertEqual(signals["expected_terms_found"], ["Festival", "Magic"])
         self.assertEqual(signals["expected_terms_found_count"], 2)
         self.assertEqual(recommendation["choice"], "openai-whisper")
-        self.assertEqual(recommendation["model"], "turbo")
+        self.assertEqual(recommendation["model"], "small")
         self.assertIn("unresolved candidates", recommendation["reason"])
+
+    def test_whisper_cpp_model_discovery_prefers_real_models(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            real_model = root / "ggml-tiny.bin"
+            ignored_model = root / "for-tests-ggml-tiny.bin"
+            real_model.write_bytes(b"model")
+            ignored_model.write_bytes(b"empty")
+
+            with mock.patch.dict("os.environ", {"WHISPER_CPP_MODEL": str(ignored_model)}):
+                discovered = benchmarks.default_whisper_cpp_model_path("tiny", extra_candidates=[real_model])
+
+            self.assertEqual(discovered, real_model)
 
     def test_trailing_asr_artifact_block_is_trimmed(self):
         segments = [

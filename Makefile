@@ -6,6 +6,7 @@ MODEL ?= small
 MODELS ?= $(MODEL)
 LANGUAGE ?= de
 EXPECTED_TERMS ?=
+BACKENDS ?= openai-whisper,faster-whisper,whisper.cpp
 
 VENV_PYTHON := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
@@ -43,4 +44,4 @@ deps:
 	$(VENV_PYTHON) app.py --check-deps
 
 benchmark:
-	$(VENV_PYTHON) benchmarks.py --audio "$(AUDIO)" --models "$(MODELS)" --language "$(LANGUAGE)" --expected-terms "$(EXPECTED_TERMS)"
+	$(VENV_PYTHON) benchmarks.py --audio "$(AUDIO)" --models "$(MODELS)" --backends "$(BACKENDS)" --language "$(LANGUAGE)" --expected-terms "$(EXPECTED_TERMS)"

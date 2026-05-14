@@ -72,6 +72,7 @@ Then open `http://127.0.0.1:8765`.
 - To check local runtime dependencies, run `make deps`.
 - To benchmark transcription on a representative file, run `make benchmark AUDIO=/path/to/audio.ogg MODELS=tiny,base,small LANGUAGE=de EXPECTED_TERMS=Festival,Lagerhallen`.
   The benchmark report includes timing, realtime factor, expected-term coverage, candidate backend availability, and a recommendation.
+  Include whisper.cpp with `WHISPER_CPP_MODEL=/path/to/ggml-tiny.bin make benchmark ...` or `benchmarks.py --whisper-cpp-model /path/to/ggml-tiny.bin`.
 - Persistence intentionally stays JSON-backed while the app is single-user and local-first; SQLite can wait until JSON becomes a real limitation.
 - Default language is German.
 - New transcripts save quickly with an extractive placeholder summary; Qwen only runs when a summary/title job is requested.
