@@ -70,7 +70,8 @@ Then open `http://127.0.0.1:8765`.
 - Local transcript history and settings live in `data/library.json` and `data/settings.json`; these files are ignored by git.
 - If old local records need metadata backfilled, run `make migrate`.
 - To check local runtime dependencies, run `make deps`.
-- To benchmark the baseline backend on a representative file, run `make benchmark AUDIO=/path/to/audio.ogg MODEL=small LANGUAGE=de`.
+- To benchmark transcription on a representative file, run `make benchmark AUDIO=/path/to/audio.ogg MODELS=tiny,base,small LANGUAGE=de EXPECTED_TERMS=Festival,Lagerhallen`.
+  The benchmark report includes timing, realtime factor, expected-term coverage, candidate backend availability, and a recommendation.
 - Persistence intentionally stays JSON-backed while the app is single-user and local-first; SQLite can wait until JSON becomes a real limitation.
 - Default language is German.
 - New transcripts save quickly with an extractive placeholder summary; Qwen only runs when a summary/title job is requested.
@@ -79,4 +80,4 @@ Then open `http://127.0.0.1:8765`.
 - Override models with `QUALITY_INSTRUCTION_MODEL_NAME=...` or `FAST_INSTRUCTION_MODEL_NAME=...`.
 - Queued transcription jobs can be canceled before they start; active OpenAI Whisper jobs cannot be interrupted safely.
 - Active transcription backend: OpenAI Whisper. Supported models are discovered from the installed backend and include `turbo` when the installed package supports it.
-- Supported file types: `.ogg`, `.mp3`, `.m4a`, `.wav`, `.mp4`, `.mpeg`, `.webm`, `.aac`, `.flac`.
+- Supported file types: `.opus`, `.oga`, `.ogg`, `.mp3`, `.m4a`, `.wav`, `.mp4`, `.mpeg`, `.webm`, `.aac`, `.flac`.

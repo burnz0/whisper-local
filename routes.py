@@ -38,15 +38,23 @@ from summaries import (
     slugify_title,
     format_duration,
 )
-from transcription import active_backend_info, supported_models
+from transcription import active_backend_info, media_duration_seconds, supported_models
 
 
 def model_choices() -> tuple[str, ...]:
     return supported_models()
 
 
-def build_stats(records) -> dict[str, str]:
-    total_duration = sum(item.duration_seconds for item in records)
+def build_record_durations(records) -> dict[str, float]:
+    return {
+        record.id: media_duration_seconds(record.audio_path) or record.duration_seconds
+        for record in records
+    }
+
+
+def build_stats(records, record_durations: dict[str, float] | None = None) -> dict[str, str]:
+    record_durations = record_durations or {}
+    total_duration = sum(record_durations.get(item.id, item.duration_seconds) for item in records)
     return {
         "count": str(len(records)),
         "duration": format_duration(total_duration),
@@ -79,6 +87,73 @@ def build_speakers(record) -> list[str]:
         if str(segment.get("speaker", "")).strip()
     }
     return sorted(speakers, key=str.lower)
+
+
+def sentence_boundary(text: str) -> bool:
+    return text.rstrip().endswith((".", "!", "?", "…"))
+
+
+def build_transcript_sections(segments: list[dict], max_duration: float | None = None) -> list[dict]:
+    sections: list[dict] = []
+    current_segments: list[dict] = []
+    current_text = ""
+    current_start = 0.0
+
+    def flush() -> None:
+        nonlocal current_segments, current_text, current_start
+        if not current_segments:
+            return
+        end = float(current_segments[-1].get("end", current_start))
+        text = " ".join(str(segment.get("text", "")).strip() for segment in current_segments).strip()
+        sections.append(
+            {
+                "id": f"{current_segments[0].get('id', len(sections))}-{current_segments[-1].get('id', len(sections))}",
+                "start": current_start,
+                "end": end,
+                "start_label": format_duration(current_start),
+                "duration_label": format_duration(max(0.0, end - current_start)),
+                "text": text,
+                "segments": current_segments,
+                "highlighted": any(bool(segment.get("highlighted")) for segment in current_segments),
+                "bookmarked": any(bool(segment.get("bookmarked")) for segment in current_segments),
+            }
+        )
+        current_segments = []
+        current_text = ""
+        current_start = 0.0
+
+    for segment in segments:
+        text = str(segment.get("text", "")).strip()
+        if not text:
+            continue
+        start = float(segment.get("start", 0.0))
+        end = float(segment.get("end", start))
+        if max_duration and start > max_duration + 0.25:
+            continue
+        if max_duration:
+            end = min(end, max_duration)
+            segment = {
+                **segment,
+                "end": end,
+                "end_label": format_duration(end),
+            }
+        if not current_segments:
+            current_start = start
+        current_segments.append(segment)
+        current_text = f"{current_text} {text}".strip()
+
+        elapsed = end - current_start
+        at_sentence_boundary = sentence_boundary(text)
+        should_flush = (
+            (at_sentence_boundary and (len(current_text) >= 180 or elapsed >= 14 or len(current_segments) >= 4))
+            or len(current_text) >= 320
+            or elapsed >= 24
+        )
+        if should_flush:
+            flush()
+
+    flush()
+    return sections
 
 
 def format_bytes(size: int) -> str:
@@ -182,6 +257,8 @@ def render_workspace(
     job=None,
     import_batch=None,
 ):
+    record_durations = build_record_durations(records)
+    selected_duration_seconds = record_durations.get(selected.id, selected.duration_seconds) if selected else 0.0
     return render_template(
         "index.html",
         records=records,
@@ -191,12 +268,15 @@ def render_workspace(
         summary_providers=SUMMARY_PROVIDERS,
         default_model=default_model or settings["default_model"],
         default_language=default_language or settings["default_language"],
-        stats=build_stats(records),
+        stats=build_stats(records, record_durations),
         local_info=build_local_info(),
         model_downloads=build_model_download_info(),
         collections=build_collections(records),
         tag_filters=build_tags(records),
         speakers=build_speakers(selected),
+        transcript_sections=build_transcript_sections(selected.segments, selected_duration_seconds) if selected else [],
+        selected_duration_seconds=selected_duration_seconds,
+        record_durations=record_durations,
         upload_accept=UPLOAD_ACCEPT,
         settings=settings,
         error=error,

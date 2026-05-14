@@ -6,10 +6,14 @@ from pathlib import Path
 from unittest import mock
 
 import app
+import benchmarks
+import config
 import jobs
 import routes
 import summaries
 import storage
+import transcription
+from werkzeug.datastructures import FileStorage
 
 
 class BackendBehaviorTest(unittest.TestCase):
@@ -138,6 +142,33 @@ class BackendBehaviorTest(unittest.TestCase):
         )
         self.assertGreaterEqual(len(dense_summary), len(summary))
 
+    def test_long_conversational_summary_does_not_copy_transcript_chunks(self):
+        text = (
+            "Boah, ich hatte einen ulkigen Traum. Du kamst auch drin vor. Wir waren auf einem Festival. "
+            "Das hat zur einen Hälfte in Lagerhallen stattgefunden und zur anderen Hälfte draußen im Hof. "
+            "In einer dunklen Halle gab es einen Stand, da konnte man sich Magic-Karten mitnehmen. "
+            "Ich habe mir ein Booster-Pack genommen und einen Zettel ausgefüllt. "
+            "Du hast vier Booster-Packs genommen und vier Zettel gleichzeitig ausgefüllt. "
+            "Dann hatten wir beide ein fertiges Deck und das war total witzig. "
+            "Außerdem waren alle Festival-Gänger in Gruppen unterwegs und jede Gruppe hatte einen Hund dabei."
+        )
+
+        summary, provider = app.generate_summary(
+            text,
+            "de",
+            {"summary_provider": "extractive", "summary_sentences": 2},
+        )
+        title = app.generate_title_from_summary(summary, "2026-05-14 WhatsApp Audio")
+
+        self.assertEqual(provider, "extractive")
+        self.assertEqual(len(summary), 1)
+        self.assertTrue(summary[0].startswith("Es geht um "))
+        self.assertLessEqual(len(summary[0].split()), 14)
+        self.assertNotIn("Du hast vier Booster-Packs genommen", summary[0])
+        self.assertNotIn("Zettel gleichzeitig ausgefüllt", summary[0])
+        self.assertNotIn("WhatsApp", title)
+        self.assertLessEqual(len(title.split()), 4)
+
     def test_extractive_summary_rejects_low_confidence_capitalized_artifacts(self):
         summary, provider = app.generate_summary(
             "Jugendermens, Zünnschneuer sowie Kanarein.",
@@ -149,6 +180,26 @@ class BackendBehaviorTest(unittest.TestCase):
         self.assertEqual(provider, "extractive")
         self.assertEqual(summary, ["Summary pending."])
         self.assertEqual(title, "2026-05-12 sample audio")
+
+    def test_benchmark_report_helpers_make_comparable_evidence(self):
+        signals = benchmarks.transcript_quality_signals(
+            "Das Festival nutzt Lagerhallen und Magic Karten.",
+            ["Festival", "Magic", "Hund"],
+        )
+        recommendation = benchmarks.recommend_backend(
+            [
+                {"backend": "openai-whisper", "status": "complete", "model": "small", "realtime_factor": 1.2},
+                {"backend": "openai-whisper", "status": "complete", "model": "turbo", "realtime_factor": 0.8},
+                {"backend": "faster-whisper", "status": "unavailable"},
+            ]
+        )
+
+        self.assertEqual(benchmarks.parse_csv("tiny, small, turbo"), ["tiny", "small", "turbo"])
+        self.assertEqual(signals["expected_terms_found"], ["Festival", "Magic"])
+        self.assertEqual(signals["expected_terms_found_count"], 2)
+        self.assertEqual(recommendation["choice"], "openai-whisper")
+        self.assertEqual(recommendation["model"], "turbo")
+        self.assertIn("unresolved candidates", recommendation["reason"])
 
     def test_trailing_asr_artifact_block_is_trimmed(self):
         segments = [
@@ -175,6 +226,31 @@ class BackendBehaviorTest(unittest.TestCase):
         self.assertEqual(app.format_duration(0), "00:00")
         self.assertEqual(app.format_duration(65.9), "01:05")
         self.assertEqual(app.format_duration(3661), "1:01:01")
+
+    def test_transcript_sections_group_short_asr_fragments(self):
+        segments = [
+            {"id": 0, "start": 0.0, "end": 1.0, "start_label": "00:00", "text": "Boah, ich hatte einen"},
+            {"id": 1, "start": 1.0, "end": 3.0, "start_label": "00:01", "text": "ulkigen Traum."},
+            {"id": 2, "start": 3.0, "end": 5.0, "start_label": "00:03", "text": "Du kamst auch drin vor."},
+            {"id": 3, "start": 5.0, "end": 42.0, "start_label": "00:05", "text": "Trailing overrun."},
+        ]
+
+        sections = routes.build_transcript_sections(segments, max_duration=6.0)
+
+        self.assertEqual(len(sections), 1)
+        self.assertEqual(sections[0]["text"], "Boah, ich hatte einen ulkigen Traum. Du kamst auch drin vor. Trailing overrun.")
+        self.assertEqual(sections[0]["end"], 6.0)
+        self.assertEqual(sections[0]["segments"][-1]["end"], 6.0)
+
+    def test_media_duration_prefers_ffprobe_duration(self):
+        fake_result = mock.Mock(returncode=0, stdout="126.522167\n", stderr="")
+        with mock.patch.object(transcription.shutil, "which", return_value="/usr/bin/ffprobe"), mock.patch.object(
+            transcription.subprocess, "run", return_value=fake_result
+        ) as run_mock:
+            duration = transcription.media_duration_seconds(Path("voice.opus"))
+
+        self.assertAlmostEqual(duration, 126.522167)
+        self.assertIn("ffprobe", run_mock.call_args.args[0][0])
 
     def test_queued_job_can_be_canceled(self):
         job = jobs.TranscriptionJob(
@@ -241,6 +317,80 @@ class BackendBehaviorTest(unittest.TestCase):
         self.assertEqual(save_mock.call_count, 2)
         self.assertEqual(len(batch_mock.call_args.args[0]), 2)
         self.assertEqual(payload["redirect_url"], "/imports/batch123")
+
+    def test_voice_note_extensions_are_allowed_and_saved(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            uploads_dir = root / "uploads"
+            transcripts_dir = root / "transcripts"
+            settings_path = root / "settings.json"
+            library_path = root / "library.json"
+
+            with mock.patch.object(storage, "DATA_DIR", root), mock.patch.object(storage, "UPLOAD_DIR", uploads_dir), mock.patch.object(
+                storage, "TRANSCRIPT_DIR", transcripts_dir
+            ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path):
+                saved = storage.save_upload(
+                    FileStorage(
+                        stream=BytesIO(b"opus voice note"),
+                        filename="WhatsApp Audio 2026-05-14 at 12.45.29.opus",
+                    )
+                )
+
+            self.assertIn(".opus", config.UPLOAD_ACCEPT)
+            self.assertIn(".oga", config.UPLOAD_ACCEPT)
+            self.assertTrue(storage.is_allowed_file("WhatsApp Audio 2026-05-14 at 12.45.29.opus"))
+            self.assertTrue(storage.is_allowed_file("telegram-voice.oga"))
+            self.assertEqual(saved.source_name, "WhatsApp Audio 2026-05-14 at 12.45.29.opus")
+            self.assertEqual(saved.audio_path.suffix, ".opus")
+            self.assertEqual(saved.audio_path.read_bytes(), b"opus voice note")
+
+    def test_transcribe_route_accepts_whatsapp_and_telegram_voice_notes(self):
+        class FakeBatch:
+            id = "voicebatch"
+
+            def as_dict(self):
+                return {
+                    "id": self.id,
+                    "status": "running",
+                    "total_count": 2,
+                    "finished_count": 0,
+                    "complete_count": 0,
+                    "failed_count": 0,
+                    "canceled_count": 0,
+                    "skipped_count": 0,
+                    "running_count": 0,
+                    "queued_count": 2,
+                    "progress_percent": 0,
+                    "first_record_id": None,
+                    "jobs": [],
+                }
+
+        saved_uploads = [
+            storage.SavedUpload(Path("whatsapp.opus"), "whatsapp", "WhatsApp Audio 2026-05-14 at 12.45.29.opus", "hash-whatsapp", 15),
+            storage.SavedUpload(Path("telegram.oga"), "telegram", "telegram-voice.oga", "hash-telegram", 15),
+        ]
+        with mock.patch.object(routes, "save_upload", side_effect=saved_uploads) as save_mock, mock.patch.object(
+            routes, "start_transcription_batch", return_value=FakeBatch()
+        ) as batch_mock:
+            response = app.app.test_client().post(
+                "/transcribe",
+                data={
+                    "model": app.DEFAULT_MODEL,
+                    "language": app.DEFAULT_LANGUAGE,
+                    "audio_file": [
+                        (BytesIO(b"whatsapp opus"), "WhatsApp Audio 2026-05-14 at 12.45.29.opus"),
+                        (BytesIO(b"telegram oga"), "telegram-voice.oga"),
+                    ],
+                },
+                headers={"X-Requested-With": "fetch"},
+                content_type="multipart/form-data",
+            )
+
+        payload = response.get_json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(save_mock.call_count, 2)
+        self.assertEqual(len(batch_mock.call_args.args[0]), 2)
+        self.assertEqual(payload["redirect_url"], "/imports/voicebatch")
 
     def test_duplicate_import_is_skipped_without_transcription(self):
         with tempfile.TemporaryDirectory() as temp_dir:

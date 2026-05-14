@@ -15,7 +15,7 @@ MODELS = ("tiny", "base", "small", "turbo")
 LANGUAGES = {"de": "German", "en": "English"}
 DEFAULT_MODEL = "small"
 DEFAULT_LANGUAGE = "de"
-UPLOAD_ACCEPT = ".ogg,.mp3,.m4a,.wav,.mp4,.mpeg,.webm,.aac,.flac"
+UPLOAD_ACCEPT = ".opus,.oga,.ogg,.mp3,.m4a,.wav,.mp4,.mpeg,.webm,.aac,.flac"
 ALLOWED_EXTENSIONS = {ext.strip(".") for ext in UPLOAD_ACCEPT.split(",")}
 
 SUMMARY_PROVIDERS = {

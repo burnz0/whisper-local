@@ -1305,10 +1305,11 @@ body[data-active-pane="notes-pane"] .search-box {
 
 .segment {
   display: grid;
-  grid-template-columns: 34px 70px minmax(0, 1fr) auto;
-  gap: var(--space-1);
+  grid-template-columns: 34px 70px minmax(0, 1fr);
+  column-gap: var(--space-2);
+  row-gap: 2px;
   align-items: start;
-  padding: var(--space-1);
+  padding: 10px var(--space-1);
   border-bottom: 1px solid transparent;
   border-radius: var(--radius-control);
   transition:
@@ -1318,13 +1319,27 @@ body[data-active-pane="notes-pane"] .search-box {
 }
 
 .segment-tools {
-  grid-column: 4;
-  grid-row: 1 / span 2;
+  grid-column: 3;
+  grid-row: 3;
   display: flex;
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    opacity 160ms ease,
+    max-height 160ms ease;
+}
+
+.segment:hover .segment-tools,
+.segment:focus-within .segment-tools,
+.segment.is-editing .segment-tools,
+.segment.is-labeling-speaker .segment-tools {
+  opacity: 1;
+  max-height: 40px;
 }
 
 .segment-edit,
@@ -1365,9 +1380,9 @@ body[data-active-pane="notes-pane"] .search-box {
 }
 
 .segment-list.is-compact .segment {
-  grid-template-columns: 30px 58px minmax(0, 1fr) auto;
+  grid-template-columns: 30px 58px minmax(0, 1fr);
   gap: var(--space-1);
-  padding: var(--space-1);
+  padding: 7px var(--space-1);
 }
 
 .segment.is-active {
@@ -1470,18 +1485,47 @@ body[data-active-pane="notes-pane"] .search-box {
 
 .segment p {
   grid-column: 3;
-  grid-row: 2;
+  grid-row: 1 / span 2;
   min-width: 0;
   margin: 0;
   font-size: 1rem;
-  line-height: 1.58;
+  line-height: 1.62;
   font-weight: 400;
   color: rgba(243, 245, 248, 0.92);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .segment-speaker[hidden] + p {
   grid-row: 1;
+}
+
+.segment-section-text {
+  max-width: 96ch;
+}
+
+.segment-fragment {
+  display: inline;
+  margin: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  padding: 0 1px;
+  cursor: pointer;
+}
+
+.segment-fragment:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.segment-fragment.is-active {
+  color: #f8fff9;
+  background: rgba(82, 207, 125, 0.16);
+  box-shadow: 0 0 0 2px rgba(82, 207, 125, 0.08);
 }
 
 .segment-list.is-compact .segment p {
@@ -1497,7 +1541,7 @@ body[data-active-pane="notes-pane"] .search-box {
 }
 
 .segment-speaker-editor {
-  grid-column: 3 / -1;
+  grid-column: 3;
   display: grid;
   grid-template-columns: minmax(160px, 260px) auto auto;
   gap: var(--space-1);
@@ -1509,7 +1553,7 @@ body[data-active-pane="notes-pane"] .search-box {
 }
 
 .segment-editor {
-  grid-column: 3 / -1;
+  grid-column: 3;
   display: grid;
   gap: var(--space-1);
   min-width: 0;

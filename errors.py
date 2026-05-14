@@ -7,7 +7,7 @@ def friendly_transcription_error(exc: Exception) -> tuple[str, int]:
 
     if isinstance(exc, ValueError):
         if "format" in lowered or "supported" in lowered:
-            return "This audio format is not supported. Choose an ogg, mp3, wav, m4a, flac, webm, or similar audio file.", 400
+            return "This audio format is not supported. Choose an opus, oga, ogg, mp3, wav, m4a, flac, webm, or similar audio file.", 400
         if "model" in lowered:
             return message or "Choose a supported Whisper model.", 400
         return message or "The selected audio file could not be used.", 400

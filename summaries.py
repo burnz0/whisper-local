@@ -41,6 +41,7 @@ STOPWORDS = {
 
 MIN_SUMMARY_WORDS = 5
 PENDING_SUMMARY = "Summary pending."
+MAX_EXTRACTIVE_SENTENCE_WORDS = 24
 
 GERMAN_CONCEPTS = [
     ("Wertschätzung", r"\b(toll|klug|gebildet|erfolgreich|zuverlaessig|zuverlässig|schätze|schaetze|sozial|zielstrebig)\b"),
@@ -192,6 +193,45 @@ def domain_terms(text: str, limit: int = 3) -> list[str]:
     return [str(item["word"]) for item in ranked[:limit]]
 
 
+def candidate_topic_terms(text: str, limit: int = 4) -> list[str]:
+    normalized = normalize_transcript_for_summary(text)
+    terms: dict[str, dict[str, object]] = {}
+    for index, match in enumerate(re.finditer(r"\b[A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß-]{3,}\b", normalized)):
+        word = match.group(0).strip("-")
+        lowered = word.lower()
+        if lowered in STOPWORDS or len(lowered) < 4:
+            continue
+        if re.search(r"\d", word):
+            continue
+        entry = terms.setdefault(lowered, {"word": word, "count": 0, "index": index, "capitalized": 0})
+        entry["count"] = int(entry["count"]) + 1
+        if word[:1].isupper() or "-" in word:
+            entry["capitalized"] = int(entry["capitalized"]) + 1
+
+    ranked = sorted(
+        terms.values(),
+        key=lambda item: (-int(item["count"]) - int(item["capitalized"]), int(item["index"])),
+    )
+    picked = []
+    for item in ranked:
+        word = str(item["word"])
+        if any(word.lower() in existing.lower() or existing.lower() in word.lower() for existing in picked):
+            continue
+        picked.append(word)
+        if len(picked) == limit:
+            break
+    return picked
+
+
+def topic_summary_from_terms(text: str, language: str, max_items: int = 3) -> list[str]:
+    terms = candidate_topic_terms(text, limit=4 if max_items > 1 else 3)
+    if len(terms) < 2:
+        return []
+    if language == "de":
+        return [f"Es geht um {join_human_list(terms, language)}."]
+    return [f"It covers {join_human_list(terms, language)}."]
+
+
 def detected_concepts(text: str, language: str, limit: int = 4) -> list[str]:
     normalized = normalize_transcript_for_summary(text).lower()
     concept_patterns = GERMAN_CONCEPTS if language == "de" else ENGLISH_CONCEPTS
@@ -317,10 +357,14 @@ def low_confidence_summary_text(text: str, language: str) -> bool:
 
 
 def summary_looks_like_transcript(summary_text: str, transcript_text: str) -> bool:
-    summary_words = summary_text.lower().split()
-    transcript_words = transcript_text.lower().split()
+    summary_cleaned = normalize_transcript_for_summary(summary_text).lower()
+    transcript_cleaned = normalize_transcript_for_summary(transcript_text).lower()
+    summary_words = summary_cleaned.split()
+    transcript_words = transcript_cleaned.split()
     if not summary_words or not transcript_words:
         return False
+    if len(summary_words) > 18 and summary_cleaned in transcript_cleaned:
+        return True
     if len(summary_words) > max(90, int(len(transcript_words) * 0.45)):
         return True
 
@@ -364,6 +408,9 @@ def sentence_summary(text: str, max_items: int = 3, language: str = "de") -> lis
     concepts = concept_summary(normalized, language, max_items=max_items)
     if concepts:
         return concepts[:max_items]
+    topic_summary = topic_summary_from_terms(normalized, language, max_items=max_items)
+    if topic_summary:
+        return topic_summary[:max_items]
     parts = split_transcript_units(normalized)
     if not parts:
         return [normalized[:180]]
@@ -393,10 +440,12 @@ def sentence_summary(text: str, max_items: int = 3, language: str = "de") -> lis
     ordered = [sentence for _, _, sentence in sorted(top_ranked, key=lambda item: item[1])]
     summary = []
     for sentence in ordered:
-        cleaned = clean_generated_paragraph(sentence, max_chars=240)
-        if cleaned:
+        cleaned = clean_generated_paragraph(sentence, max_chars=180)
+        if cleaned and len(cleaned.split()) <= MAX_EXTRACTIVE_SENTENCE_WORDS and not summary_looks_bad(cleaned, normalized):
             summary.append(cleaned)
-    return summary
+    if summary:
+        return summary
+    return [PENDING_SUMMARY]
 
 
 def chunk_text(text: str, max_chars: int = 2200) -> list[str]:

@@ -3,7 +3,9 @@ VENV ?= .venv
 HOST ?= 127.0.0.1
 PORT ?= 8765
 MODEL ?= small
+MODELS ?= $(MODEL)
 LANGUAGE ?= de
+EXPECTED_TERMS ?=
 
 VENV_PYTHON := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
@@ -41,4 +43,4 @@ deps:
 	$(VENV_PYTHON) app.py --check-deps
 
 benchmark:
-	$(VENV_PYTHON) benchmarks.py --audio "$(AUDIO)" --model "$(MODEL)" --language "$(LANGUAGE)"
+	$(VENV_PYTHON) benchmarks.py --audio "$(AUDIO)" --models "$(MODELS)" --language "$(LANGUAGE)" --expected-terms "$(EXPECTED_TERMS)"

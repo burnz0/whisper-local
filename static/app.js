@@ -85,6 +85,7 @@
     extractive: "Extractive fallback"
   };
   const segmentRows = Array.from(document.querySelectorAll(".segment[data-start]"));
+  const segmentFragments = Array.from(document.querySelectorAll(".segment-fragment[data-start]"));
   let lastActiveSegment = null;
   let followPlayback = window.localStorage.getItem("whisperLocal.followPlayback") !== "false";
   let transcriptDensity = window.localStorage.getItem("whisperLocal.transcriptDensity") || "comfortable";
@@ -97,6 +98,50 @@
     const mins = Math.floor(total / 60);
     const secs = total % 60;
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+  const setWaveformDuration = (duration) => {
+    if (!Number.isFinite(duration) || duration <= 0 || !waveformSegments.length) return;
+    waveformSegments.forEach((bar, index) => {
+      const start = (duration * index) / waveformSegments.length;
+      const end = (duration * (index + 1)) / waveformSegments.length;
+      bar.dataset.waveStart = start.toFixed(2);
+      bar.dataset.waveEnd = end.toFixed(2);
+      bar.setAttribute("aria-label", `Seek to ${formatTime(start)}`);
+    });
+  };
+  const renderDecodedWaveform = async () => {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!audio || !waveformSegments.length || !audio.currentSrc || !AudioContextClass) return;
+    try {
+      const response = await fetch(audio.currentSrc);
+      if (!response.ok) return;
+      const bytes = await response.arrayBuffer();
+      const context = new AudioContextClass();
+      const buffer = await context.decodeAudioData(bytes);
+      const channel = buffer.getChannelData(0);
+      const samplesPerBar = Math.max(1, Math.floor(channel.length / waveformSegments.length));
+      waveformSegments.forEach((bar, index) => {
+        const start = index * samplesPerBar;
+        const end = Math.min(channel.length, start + samplesPerBar);
+        let sum = 0;
+        let sampled = 0;
+        const stride = Math.max(1, Math.floor((end - start) / 240));
+        for (let sampleIndex = start; sampleIndex < end; sampleIndex += stride) {
+          const value = channel[sampleIndex] || 0;
+          sum += value * value;
+          sampled += 1;
+        }
+        const rms = Math.sqrt(sum / Math.max(sampled, 1));
+        const height = Math.round(9 + Math.min(1, rms * 7) * 36);
+        bar.style.setProperty("--wave-height", `${height}px`);
+      });
+      setWaveformDuration(buffer.duration);
+      if (typeof context.close === "function") {
+        await context.close();
+      }
+    } catch (error) {
+      console.debug("audio waveform decode failed", error);
+    }
   };
   const statusLabel = (status) => {
     if (status === "queued") return "Queued";
@@ -457,11 +502,19 @@
       row.classList.toggle("is-active", isActive);
       if (isActive) activeRow = row;
     });
+    let activeFragment = null;
+    segmentFragments.forEach((fragment) => {
+      const start = Number(fragment.dataset.start || 0);
+      const end = Number(fragment.dataset.end || 0);
+      const isActive = timeSeconds >= start && timeSeconds < end;
+      fragment.classList.toggle("is-active", isActive);
+      if (isActive) activeFragment = fragment;
+    });
     if (activeRow && playerNowText) {
       const textEl = activeRow.querySelector("p");
       const timeEl = activeRow.querySelector(".segment-time");
-      playerNowText.textContent = textEl ? textEl.textContent.trim() : "";
-      if (playerNowTime) playerNowTime.textContent = timeEl ? timeEl.textContent.trim() : "";
+      playerNowText.textContent = activeFragment ? activeFragment.textContent.trim() : textEl ? textEl.textContent.trim() : "";
+      if (playerNowTime) playerNowTime.textContent = activeFragment ? activeFragment.dataset.startLabel || "" : timeEl ? timeEl.textContent.trim() : "";
       if (playerNow) playerNow.classList.add("has-segment");
     } else if (!activeRow && playerNowText && titleEl) {
       playerNowText.textContent = titleEl.textContent || "";
@@ -547,6 +600,8 @@
 
     audio.addEventListener("loadedmetadata", () => {
       if (durationTime) durationTime.textContent = formatTime(audio.duration);
+      setWaveformDuration(audio.duration);
+      renderDecodedWaveform();
       syncProgress();
       syncActiveSegment(audio.currentTime || 0);
     });
@@ -609,11 +664,25 @@
       });
     });
 
+    segmentFragments.forEach((fragment) => {
+      fragment.addEventListener("click", (event) => {
+        event.stopPropagation();
+        audio.currentTime = Number(fragment.dataset.start || 0);
+        if (appSettings.autoplay_on_seek) {
+          audio.play();
+        }
+        currentTime.textContent = formatTime(audio.currentTime);
+        syncProgress();
+        syncActiveSegment(audio.currentTime);
+        if (toggle) toggle.textContent = appSettings.autoplay_on_seek ? "❚❚" : "▶";
+      });
+    });
+
     segmentRows.forEach((row) => {
       row.addEventListener("click", (event) => {
         if (
           event.target instanceof HTMLElement &&
-          event.target.closest(".segment-play, .segment-tools, .segment-editor, .segment-speaker-editor")
+          event.target.closest(".segment-play, .segment-fragment, .segment-tools, .segment-editor, .segment-speaker-editor")
         ) {
           return;
         }
@@ -851,7 +920,7 @@
     const renderFileName = (files) => {
       const selectedFiles = Array.from(files || []);
       if (!selectedFiles.length) {
-        fileNameLabel.textContent = "Supported formats: ogg, mp3, wav, m4a, flac, webm";
+        fileNameLabel.textContent = "Supported formats: opus, oga, ogg, mp3, wav, m4a, flac, webm";
         return;
       }
       if (selectedFiles.length === 1) {

@@ -78,7 +78,7 @@
               <div class="library-card__body">
                 <strong data-record-title="{{ record.id }}">{{ record.title }}</strong>
                 <span class="library-card__collection" data-record-collection-label="{{ record.id }}">{{ record.collection }}</span>
-                <small>{{ record.created_at[11:16] }} • {{ "%.0f"|format(record.duration_seconds) }}s • {{ languages[record.language] }}</small>
+                <small>{{ record.created_at[11:16] }} • {{ "%.0f"|format(record_durations.get(record.id, record.duration_seconds)) }}s • {{ languages[record.language] }}</small>
               </div>
             </a>
             <button class="library-delete" type="button" data-delete-record="{{ record.id }}" aria-label="Delete transcription">×</button>
@@ -234,7 +234,7 @@
               <div class="meta-row">
                 <span>{{ selected.created_at[:10] }}</span>
                 <span>{{ selected.created_at[11:16] }}</span>
-                <span>{{ selected.duration_seconds|round|int }}s</span>
+                <span>{{ selected_duration_seconds|round|int }}s</span>
                 <span>{{ languages[selected.language] }} ({{ selected.language }})</span>
                 <span>{{ selected.model }}</span>
               </div>
@@ -309,20 +309,17 @@
 
           <section class="pane is-active" id="transcript-pane">
             <div class="segment-list" id="segment-list">
-              {% for segment in selected.segments %}
-              <article class="segment {% if segment.highlighted %}is-highlighted{% endif %} {% if segment.bookmarked %}is-bookmarked{% endif %}" data-segment-id="{{ segment.id }}" data-start="{{ segment.start }}" data-end="{{ segment.end }}" data-text="{{ segment.text|lower }}" data-bookmarked="{{ 'true' if segment.bookmarked else 'false' }}" data-highlighted="{{ 'true' if segment.highlighted else 'false' }}">
-                <button class="segment-play" data-start="{{ segment.start }}" title="Play from {{ segment.start_label }}" aria-label="Play from {{ segment.start_label }}">
+              {% for section in transcript_sections %}
+              <article class="segment transcript-section {% if section.highlighted %}is-highlighted{% endif %} {% if section.bookmarked %}is-bookmarked{% endif %}" data-section-id="{{ section.id }}" data-start="{{ section.start }}" data-end="{{ section.end }}" data-text="{{ section.text|lower }}">
+                <button class="segment-play" data-start="{{ section.start }}" title="Play from {{ section.start_label }}" aria-label="Play from {{ section.start_label }}">
                   <span aria-hidden="true">▶</span>
                 </button>
-                <div class="segment-time">{{ segment.start_label }}</div>
-                <span class="segment-speaker" data-segment-speaker-label="{{ segment.id }}" {% if not segment.speaker %}hidden{% endif %}>{{ segment.speaker }}</span>
-                <p>{{ segment.text }}</p>
-                <div class="segment-tools">
-                  <button class="segment-speaker-button" type="button" data-speaker-segment="{{ segment.id }}">Speaker</button>
-                  <button class="segment-flag" type="button" data-segment-flag="highlighted" aria-pressed="{{ 'true' if segment.highlighted else 'false' }}">Highlight</button>
-                  <button class="segment-flag" type="button" data-segment-flag="bookmarked" aria-pressed="{{ 'true' if segment.bookmarked else 'false' }}">Bookmark</button>
-                  <button class="segment-edit" type="button" data-edit-segment="{{ segment.id }}">Edit</button>
-                </div>
+                <div class="segment-time">{{ section.start_label }}</div>
+                <p class="segment-section-text">
+                  {% for segment in section.segments %}
+                  <button class="segment-fragment" type="button" data-start="{{ segment.start }}" data-end="{{ segment.end }}" data-start-label="{{ segment.start_label }}" data-segment-id="{{ segment.id }}" data-text="{{ segment.text|lower }}" aria-label="Play from {{ segment.start_label }}">{{ segment.text }}</button>
+                  {% endfor %}
+                </p>
               </article>
               {% endfor %}
               {% if not selected.segments %}
@@ -392,10 +389,10 @@
               </div>
               <div class="player-center">
                 <div class="waveform" id="waveform" aria-label="Transcript timing waveform">
-                  {% if selected.duration_seconds %}
+                  {% if selected_duration_seconds %}
                   {% for i in range(72) %}
-                  {% set wave_start = (selected.duration_seconds|float) * i / 72 %}
-                  {% set wave_end = (selected.duration_seconds|float) * (i + 1) / 72 %}
+                  {% set wave_start = (selected_duration_seconds|float) * i / 72 %}
+                  {% set wave_end = (selected_duration_seconds|float) * (i + 1) / 72 %}
                   <button
                     type="button"
                     class="waveform-segment"
@@ -415,7 +412,7 @@
                   type="range"
                   id="audio-progress"
                   min="0"
-                  max="{{ selected.duration_seconds if selected.duration_seconds else 0 }}"
+                  max="{{ selected_duration_seconds if selected_duration_seconds else 0 }}"
                   step="0.1"
                   value="0"
                   aria-label="Audio progress"
@@ -423,7 +420,7 @@
               </div>
               <div class="player-right">
                 <button class="follow-toggle is-active" type="button" id="follow-playback-toggle" aria-pressed="true" title="Follow playback">Follow</button>
-                <span class="time-pill time-pill--muted" id="duration-time">{{ selected.duration_seconds|round|int if selected.duration_seconds else 0 }}s</span>
+                <span class="time-pill time-pill--muted" id="duration-time">{{ selected_duration_seconds|round|int if selected_duration_seconds else 0 }}s</span>
               </div>
             </div>
             <audio id="audio-player" preload="metadata" src="{{ url_for('audio_file', filename=selected.stored_filename) }}"></audio>
@@ -462,7 +459,7 @@
                 <input type="file" id="audio-file-input" name="audio_file" accept="{{ upload_accept }}" multiple required>
                 <span>Choose files</span>
               </label>
-              <small id="selected-file-name">Supported formats: ogg, mp3, wav, m4a, flac, webm</small>
+              <small id="selected-file-name">Supported formats: opus, oga, ogg, mp3, wav, m4a, flac, webm</small>
 
               <div class="trust-list" aria-label="Local processing guarantees">
                 <span>Runs locally</span>

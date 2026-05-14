@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -16,6 +17,39 @@ except ImportError:  # pragma: no cover
 
 
 logger = logging.getLogger(__name__)
+
+
+def media_duration_seconds(file_path: Path) -> float | None:
+    if shutil.which("ffprobe") is None:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(file_path),
+            ],
+            capture_output=True,
+            check=False,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        logger.debug("could not read media duration file=%s", file_path, exc_info=True)
+        return None
+    if result.returncode != 0:
+        logger.debug("ffprobe duration failed file=%s stderr=%s", file_path, result.stderr.strip())
+        return None
+    try:
+        duration = float(result.stdout.strip())
+    except ValueError:
+        return None
+    return duration if duration > 0 else None
 
 
 @dataclass(frozen=True)
@@ -126,7 +160,8 @@ class OpenAIWhisperBackend:
                     "text": str(segment.get("text", "")).strip(),
                 }
             )
-        duration = segments[-1]["end"] if segments else 0.0
+        segment_duration = segments[-1]["end"] if segments else 0.0
+        duration = media_duration_seconds(file_path) or segment_duration
         logger.info("transcription finished file=%s segments=%s duration=%.2f backend=%s", file_path.name, len(segments), duration, self.name)
         return TranscriptionResult(text=text, segments=segments, duration_seconds=duration)
 
