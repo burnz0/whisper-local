@@ -65,6 +65,7 @@
   const settingsWorkspace = document.getElementById("settings-workspace");
   const detailPanel = document.querySelector(".detail-panel");
   const sidebar = document.querySelector(".sidebar");
+  const sidebarToggle = document.getElementById("sidebar-toggle");
   const contextBackdrop = document.getElementById("context-backdrop");
   const closeUploadPanel = document.getElementById("close-upload-panel");
   const fileNameLabel = document.getElementById("selected-file-name");
@@ -90,6 +91,7 @@
   let searchScope = window.localStorage.getItem("whisperLocal.searchScope") || "transcript";
   let activeCollectionFilter = window.localStorage.getItem("whisperLocal.collectionFilter") || "all";
   let activeTagFilter = window.localStorage.getItem("whisperLocal.tagFilter") || "all";
+  let isSidebarCollapsed = window.localStorage.getItem("whisperLocal.sidebarCollapsed") === "true";
   const formatTime = (seconds) => {
     const total = Math.max(0, Math.floor(seconds || 0));
     const mins = Math.floor(total / 60);
@@ -127,6 +129,25 @@
     option.textContent = speaker;
     speakerFilter.appendChild(option);
   };
+
+  const setSidebarCollapsed = (collapsed) => {
+    isSidebarCollapsed = Boolean(collapsed);
+    document.body.classList.toggle("sidebar-collapsed", isSidebarCollapsed);
+    if (sidebar) sidebar.dataset.collapsed = String(isSidebarCollapsed);
+    if (sidebarToggle) {
+      sidebarToggle.setAttribute("aria-expanded", String(!isSidebarCollapsed));
+      sidebarToggle.setAttribute("aria-label", isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar");
+      sidebarToggle.title = isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar";
+    }
+    window.localStorage.setItem("whisperLocal.sidebarCollapsed", String(isSidebarCollapsed));
+  };
+
+  if (sidebarToggle) {
+    setSidebarCollapsed(isSidebarCollapsed);
+    sidebarToggle.addEventListener("click", () => {
+      setSidebarCollapsed(!isSidebarCollapsed);
+    });
+  }
 
   if (jobState && jobStatus) {
     const renderJobMeta = (job) => {

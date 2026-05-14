@@ -8,28 +8,39 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-mark">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 12h2M7 9v6M10 5v14M13 8v8M16 4v16M19 9v6" />
-          </svg>
+  <div class="app-shell" id="app-shell">
+    <aside class="sidebar" id="app-sidebar">
+      <div class="sidebar-top">
+        <div class="brand">
+          <div class="brand-mark">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 12h2M7 9v6M10 5v14M13 8v8M16 4v16M19 9v6" />
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <h1>Whisper Local</h1>
+            <p>Private. Local. Secure.</p>
+          </div>
         </div>
-        <div>
-          <h1>Whisper Local</h1>
-          <p>Private. Local. Secure.</p>
-        </div>
+        <button class="sidebar-toggle" type="button" id="sidebar-toggle" aria-controls="app-sidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar">
+          <span class="sidebar-toggle__icon" aria-hidden="true">‹</span>
+        </button>
       </div>
 
       <button class="primary-action" type="button" data-open-upload aria-keyshortcuts="Control+K Meta+K">
-        <span>+</span>
-        New Transcription
+        <span aria-hidden="true">+</span>
+        <span class="primary-action__label">New Transcription</span>
       </button>
 
       <nav class="nav" id="sidebar-nav">
-        <button class="nav-item active" type="button" data-workspace-mode="history">History</button>
-        <button class="nav-item" type="button" data-workspace-mode="settings">Settings</button>
+        <button class="nav-item active" type="button" data-workspace-mode="history" aria-label="History" title="History">
+          <span class="nav-item__icon" aria-hidden="true">◷</span>
+          <span class="nav-item__label">History</span>
+        </button>
+        <button class="nav-item" type="button" data-workspace-mode="settings" aria-label="Settings" title="Settings">
+          <span class="nav-item__icon" aria-hidden="true">⚙</span>
+          <span class="nav-item__label">Settings</span>
+        </button>
       </nav>
 
       <section class="library" id="history-panel">
