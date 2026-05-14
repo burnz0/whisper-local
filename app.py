@@ -1,4 +1,4 @@
-#!/Users/burnz0/.transcribe-venv/bin/python3
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -9,7 +9,7 @@ try:
 except ImportError as exc:  # pragma: no cover
     raise SystemExit(
         "Flask is not installed for this Python interpreter.\n"
-        "Run /Users/burnz0/.transcribe-venv/bin/pip install flask"
+        "Run PYTHON=python3.12 make install-core"
     ) from exc
 
 from config import DEFAULT_LANGUAGE, DEFAULT_MODEL, DEFAULT_SETTINGS, LANGUAGES, MODELS

@@ -10,6 +10,10 @@ Product direction: keep Whisper Local a calm, local-first desktop browser worksp
 - Analysis stays separate from transcription. Ingestion should persist quickly with an extractive fallback; local instruction models can run for manual summaries, titles, action items, and entities.
 - Semantic search should start as an additive sidecar over the JSON library, likely `data/search-index.json` with `intfloat/multilingual-e5-small`.
 - OpenAI Whisper remains the production baseline. The 2026-05-14 benchmark points to `whisper.cpp` plus `base` as the next backend experiment, not the default yet.
+- Keep Flask plus vanilla HTML/CSS/JS for now. The UI is a local single-user workspace, so a frontend build chain or SPA framework would add more maintenance than value today.
+- Keep local ML dependencies split from the core Flask dependency. Do not make Qwen, mT5, faster-whisper, or whisper.cpp mandatory for starting the app.
+- Hold `transformers` on the 4.x line until the Qwen and mT5 paths are smoke-tested on 5.x. The package has a newer major version, but this app uses direct model/tokenizer APIs that should not be upgraded blindly.
+- Avoid adding SQLite, SQLAlchemy, Celery, Redis, Docker, or cloud services until there is a measured local limitation that justifies them.
 
 ## P0 - Transcription Backend
 
@@ -23,6 +27,7 @@ Product direction: keep Whisper Local a calm, local-first desktop browser worksp
 - [ ] Add durable background analysis job state for titles, summaries, action items, and entities.
 - [ ] Add AI extraction for action items and entities behind the analysis provider boundary.
 - [ ] Implement the semantic search sidecar for transcript segments, notes, and summaries.
+- [ ] Add a small local-model smoke test script for Qwen title/summary generation before upgrading `transformers` to 5.x.
 - [ ] Preserve import/export paths so existing JSON-backed libraries can migrate safely if SQLite becomes necessary.
 
 ## P2 - Product Architecture
@@ -30,6 +35,7 @@ Product direction: keep Whisper Local a calm, local-first desktop browser worksp
 - [ ] Make the context panel reusable for export, metadata, ingest, and model settings.
 - [ ] Keep desktop/tablet layout polish focused on dense transcript review rather than marketing-style presentation.
 - [ ] Add small benchmark fixtures or documented sample expectations so backend comparisons are repeatable without private audio.
+- [ ] Add lightweight Python project metadata and dev tooling only when it starts paying for itself, likely `pyproject.toml` plus Ruff for formatting/import checks.
 
 ## Done Recently
 
