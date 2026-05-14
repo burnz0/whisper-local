@@ -1,49 +1,48 @@
 # TODO
 
-Fresh technical backlog from the May 2026 stack review. Product direction remains a calm, local-first workspace for turning conversations into searchable knowledge.
+Product direction: keep Whisper Local a calm, local-first desktop browser workspace for turning recordings into searchable knowledge.
 
-## Current Scope Notes
+## Current Decisions
 
-- Desktop browser layouts are the current product target.
-- Mobile layout polish is intentionally deferred; avoid treating mobile-only issues as blockers unless they break desktop/tablet behavior.
-- Keep the app local-first by default. Any cloud-backed option must be explicit, opt-in, and clearly labeled.
-
-## P0 - Runtime And Dependency Health
-
-- [x] Upgrade the local development/runtime target from Python 3.9 to Python 3.11 or 3.12.
-- [x] Replace the implicit `/Users/burnz0/.transcribe-venv` assumption with documented environment setup.
-- [x] Pin core runtime dependencies and split optional ML dependencies into explicit extras or install groups.
-- [x] Add a startup dependency report that distinguishes required, optional, installed, missing, and unsupported components.
-- [x] Make processing mode labels truthful: only show Metal/CUDA when the active transcription backend actually uses it.
+- Desktop browser layouts are the current product target. Mobile polish is deferred unless it breaks desktop or tablet behavior.
+- Cloud transcription, hosted storage, and multi-user collaboration are out of scope unless they become explicit opt-in features.
+- JSON remains the primary library store while the app is local and single-user. Revisit SQLite only if contention, corruption risk, slow search rebuilds, joins, or reliable partial updates become real problems.
+- Analysis stays separate from transcription. Ingestion should persist quickly with an extractive fallback; local instruction models can run for manual summaries, titles, action items, and entities.
+- Semantic search should start as an additive sidecar over the JSON library, likely `data/search-index.json` with `intfloat/multilingual-e5-small`.
+- OpenAI Whisper remains the production baseline. The 2026-05-14 benchmark points to `whisper.cpp` plus `base` as the next backend experiment, not the default yet.
 
 ## P0 - Transcription Backend
 
-- [x] Introduce a transcription backend interface so model loading, transcription, timing, and errors are backend-specific.
-- [x] Keep `openai-whisper` as the baseline backend until replacements are benchmarked.
-- [x] Benchmark `faster-whisper` for local CPU performance, install friction, and transcript quality.
-- [x] Benchmark `whisper.cpp` for Apple Silicon performance, GGML models, install friction, and integration cost.
-- [x] Add `turbo` as an optional Whisper model tier if the selected backend supports it cleanly.
-- [ ] Revisit default model choice after benchmarking `small`, `medium`, and `turbo` on representative German and English audio.
+- [ ] Build a production `whisper.cpp` backend adapter with model path validation, model download/setup guidance, timing, errors, and capability metadata.
+- [ ] Expand the benchmark corpus across German and English audio, including short, long, noisy, conversational, and cleaner samples.
+- [ ] Compare `tiny`, `base`, `small`, `medium`, and `turbo` where supported before changing the default backend or model.
+- [ ] Add atomic JSON writes and file locking around library/settings writes that can race with background jobs or UI edits.
 
-## P1 - Local Analysis And Summaries
+## P1 - Local Analysis And Knowledge
 
-- [x] Create a local analysis provider interface separate from transcription.
-- [x] Treat the current German mT5 summarizer as an optional baseline, not the long-term product bet.
-- [x] Benchmark local instruction models for summaries, action items, entities, and title generation.
-- [x] Keep extractive summaries as a reliable fallback path.
-- [ ] Add AI extraction for action items and entities once the provider boundary is in place.
-
-## P1 - Search And Knowledge Storage
-
-- [x] Explore semantic search for local knowledge retrieval.
-- [x] Choose a local embedding model and storage strategy for transcript segments and notes.
-- [x] Decide whether semantic search is enough on JSON or whether it should trigger a SQLite migration.
-- [ ] If migrating to SQLite, model transcripts, segments, tags, collections, notes, speakers, summaries, and extracted entities explicitly.
-- [x] Preserve import/export paths so existing JSON-backed libraries can migrate safely.
+- [ ] Add durable background analysis job state for titles, summaries, action items, and entities.
+- [ ] Add AI extraction for action items and entities behind the analysis provider boundary.
+- [ ] Implement the semantic search sidecar for transcript segments, notes, and summaries.
+- [ ] Preserve import/export paths so existing JSON-backed libraries can migrate safely if SQLite becomes necessary.
 
 ## P2 - Product Architecture
 
 - [ ] Make the context panel reusable for export, metadata, ingest, and model settings.
-- [x] Add backend/model capability metadata to the UI so unsupported combinations are hidden or clearly disabled.
-- [x] Add cancellation semantics for queued jobs and document which backends can cancel active transcription.
-- [x] Add lightweight benchmark fixtures and commands for comparing transcription backends.
+- [ ] Keep desktop/tablet layout polish focused on dense transcript review rather than marketing-style presentation.
+- [ ] Add small benchmark fixtures or documented sample expectations so backend comparisons are repeatable without private audio.
+
+## Done Recently
+
+- [x] Upgraded the local development/runtime target from Python 3.9 to Python 3.11 or 3.12.
+- [x] Replaced the implicit `/Users/burnz0/.transcribe-venv` assumption with documented environment setup.
+- [x] Split core web dependencies from optional local ML dependencies.
+- [x] Added a startup dependency report for required, optional, installed, missing, and unsupported components.
+- [x] Made processing mode labels truthful for the active backend.
+- [x] Introduced a transcription backend interface.
+- [x] Benchmarked OpenAI Whisper, faster-whisper, and whisper.cpp on a local German sample.
+- [x] Added `turbo` as an optional Whisper model tier when supported by the selected backend.
+- [x] Created a local analysis provider interface separate from transcription.
+- [x] Kept extractive summaries as the reliable fallback path.
+- [x] Added backend/model capability metadata to the UI.
+- [x] Added queued-job cancellation semantics and documented active backend cancellation limits.
+- [x] Added lightweight benchmark commands for comparing transcription backends.
