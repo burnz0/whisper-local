@@ -54,3 +54,4 @@ Product direction: keep Whisper Local a calm, local-first desktop browser worksp
 - [x] Added lightweight benchmark commands for comparing transcription backends.
 - [x] Added atomic JSON writes and file locking for local library/settings persistence.
 - [x] Added an opt-in production `whisper.cpp` backend adapter.
+- [x] Added `medium` to the supported Whisper model tiers and default benchmark matrix.

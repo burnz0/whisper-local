@@ -236,12 +236,14 @@ def build_model_download_info() -> list[dict[str, str]]:
         "tiny": "~75 MB",
         "base": "~142 MB",
         "small": "~466 MB",
+        "medium": "~1.5 GB",
         "turbo": "~1.6 GB",
     }
     expected_eta = {
         "tiny": "Usually under a minute",
         "base": "A few minutes",
         "small": "Several minutes on first use",
+        "medium": "Longer first-use download",
         "turbo": "Longer first-use download",
     }
     model_info = []

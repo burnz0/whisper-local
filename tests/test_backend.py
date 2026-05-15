@@ -18,6 +18,14 @@ from werkzeug.datastructures import FileStorage
 
 class BackendBehaviorTest(unittest.TestCase):
     def test_normalize_settings_falls_back_to_safe_defaults(self):
+        valid_settings = app.normalize_settings(
+            {
+                "default_model": "medium",
+                "default_language": "en",
+                "summary_provider": "extractive",
+                "summary_sentences": 2,
+            }
+        )
         settings = app.normalize_settings(
             {
                 "default_model": "huge",
@@ -29,6 +37,8 @@ class BackendBehaviorTest(unittest.TestCase):
             }
         )
 
+        self.assertEqual(valid_settings["default_model"], "medium")
+        self.assertEqual(valid_settings["default_language"], "en")
         self.assertEqual(settings["default_model"], app.DEFAULT_MODEL)
         self.assertEqual(settings["default_language"], app.DEFAULT_LANGUAGE)
         self.assertEqual(settings["summary_provider"], app.DEFAULT_SETTINGS["summary_provider"])

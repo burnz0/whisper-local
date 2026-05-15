@@ -11,7 +11,7 @@ TRANSCRIPT_DIR = DATA_DIR / "transcripts"
 LIBRARY_PATH = DATA_DIR / "library.json"
 SETTINGS_PATH = DATA_DIR / "settings.json"
 
-MODELS = ("tiny", "base", "small", "turbo")
+MODELS = ("tiny", "base", "small", "medium", "turbo")
 LANGUAGES = {"de": "German", "en": "English"}
 DEFAULT_MODEL = "small"
 DEFAULT_LANGUAGE = "de"

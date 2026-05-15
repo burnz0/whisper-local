@@ -58,7 +58,7 @@ make run
 make test
 make deps
 make migrate
-make benchmark AUDIO=/path/to/audio.ogg MODELS=tiny,base,small LANGUAGE=de EXPECTED_TERMS=Festival,Lagerhallen
+make benchmark AUDIO=/path/to/audio.ogg LANGUAGE=de EXPECTED_TERMS=Festival,Lagerhallen
 ```
 
 The benchmark command reports timing, realtime factor, expected-term coverage, candidate backend availability, and a recommendation. Include whisper.cpp with:
@@ -81,7 +81,7 @@ make run
 TRANSCRIPTION_BACKEND=whisper.cpp WHISPER_CPP_MODEL=/path/to/ggml-base.bin make run
 ```
 
-Or point at a directory containing files named `ggml-tiny.bin`, `ggml-base.bin`, `ggml-small.bin`, and so on:
+Or point at a directory containing files named `ggml-tiny.bin`, `ggml-base.bin`, `ggml-small.bin`, `ggml-medium.bin`, `ggml-turbo.bin`, and so on:
 
 ```bash
 TRANSCRIPTION_BACKEND=whisper.cpp WHISPER_CPP_MODEL_DIR=/path/to/whisper-cpp-models make run
@@ -119,7 +119,7 @@ whisper-local/
 - Default manual summary provider is the quality local Qwen model (`Qwen/Qwen3-1.7B`).
 - Background auto-title generation uses the faster Qwen model (`Qwen/Qwen3-0.6B`).
 - Override models with `QUALITY_INSTRUCTION_MODEL_NAME=...` or `FAST_INSTRUCTION_MODEL_NAME=...`.
-- Active transcription backend: OpenAI Whisper by default, with opt-in whisper.cpp support through `TRANSCRIPTION_BACKEND=whisper.cpp`. Supported models are discovered from the installed backend and configured model paths.
+- Active transcription backend: OpenAI Whisper by default, with opt-in whisper.cpp support through `TRANSCRIPTION_BACKEND=whisper.cpp`. Supported models are discovered from the installed backend and configured model paths. The benchmark command defaults to the full comparison matrix: `tiny`, `base`, `small`, `medium`, and `turbo`.
 - Current non-goals: cloud transcription, hosted storage, multi-user collaboration, heavy database migration before it is needed, and a large framework rewrite.
 
 ## Benchmark Status
