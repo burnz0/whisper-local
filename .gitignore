@@ -2,6 +2,7 @@ data/uploads/
 data/transcripts/
 data/library.json
 data/settings.json
+data/*.json.lock
 __pycache__/
 .pycache/
 .venv/

@@ -515,6 +515,86 @@ class BackendBehaviorTest(unittest.TestCase):
             self.assertEqual(len(backups), 1)
             self.assertEqual(json.loads(settings_path.read_text(encoding="utf-8"))["default_model"], app.DEFAULT_MODEL)
 
+    def test_save_library_keeps_original_file_when_atomic_replace_fails(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            library_path = root / "library.json"
+            settings_path = root / "settings.json"
+            library_path.write_text("[]\n", encoding="utf-8")
+            settings_path.write_text(json.dumps(app.DEFAULT_SETTINGS), encoding="utf-8")
+            record = storage.record_from_payload(
+                {
+                    "id": "abc123",
+                    "title": "Original",
+                    "title_source": "manual",
+                    "filename": "recording.ogg",
+                    "stored_filename": "abc123.ogg",
+                    "transcript_filename": "abc123.txt",
+                    "created_at": "2026-05-11T12:00:00",
+                    "model": "base",
+                    "language": "de",
+                    "duration_seconds": 12,
+                    "transcript_text": "Hallo Welt.",
+                    "summary": ["Hallo Welt."],
+                    "summary_provider": "extractive",
+                    "segments": [],
+                }
+            )
+
+            with mock.patch.object(storage, "DATA_DIR", root), mock.patch.object(storage, "UPLOAD_DIR", root / "uploads"), mock.patch.object(
+                storage, "TRANSCRIPT_DIR", root / "transcripts"
+            ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path), mock.patch.object(
+                storage.os, "replace", side_effect=OSError("replace failed")
+            ):
+                with self.assertRaises(OSError):
+                    storage.save_library([record])
+
+            self.assertEqual(library_path.read_text(encoding="utf-8"), "[]\n")
+            self.assertEqual(list(root.glob(".library.json.*.tmp")), [])
+
+    def test_background_title_update_preserves_concurrent_record_edits(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            library_path = root / "library.json"
+            settings_path = root / "settings.json"
+            transcripts_dir = root / "transcripts"
+            transcripts_dir.mkdir()
+            record = {
+                "id": "abc123",
+                "title": "Auto title",
+                "title_source": "auto",
+                "filename": "recording.ogg",
+                "stored_filename": "abc123.ogg",
+                "transcript_filename": "abc123.txt",
+                "created_at": "2026-05-11T12:00:00",
+                "model": "base",
+                "language": "de",
+                "duration_seconds": 12,
+                "transcript_text": "Anna bespricht den Produktlaunch.",
+                "summary": ["Produktlaunch."],
+                "summary_provider": "extractive",
+                "segments": [],
+                "notes": "",
+            }
+            library_path.write_text(json.dumps([record], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            settings_path.write_text(json.dumps(app.DEFAULT_SETTINGS), encoding="utf-8")
+
+            def generate_title(*_args):
+                storage.update_record_notes("abc123", "Manual note")
+                return "Instruction title"
+
+            with mock.patch.object(storage, "DATA_DIR", root), mock.patch.object(storage, "UPLOAD_DIR", root / "uploads"), mock.patch.object(
+                storage, "TRANSCRIPT_DIR", transcripts_dir
+            ), mock.patch.object(storage, "SETTINGS_PATH", settings_path), mock.patch.object(storage, "LIBRARY_PATH", library_path), mock.patch.object(
+                storage, "generate_title_with_instruction_model", side_effect=generate_title
+            ):
+                updated = storage.update_record_title_with_instruction_model("abc123")
+                final_record = storage.get_record("abc123")
+
+            self.assertEqual(updated.title, "Instruction title")
+            self.assertEqual(final_record.title, "Instruction title")
+            self.assertEqual(final_record.notes, "Manual note")
+
     def test_load_library_does_not_rewrite_missing_summary_records(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

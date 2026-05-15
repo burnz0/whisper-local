@@ -919,6 +919,64 @@
   }
 
   if (fileInput && fileNameLabel) {
+    const extensionFromName = (name) => {
+      const match = String(name || "").toLowerCase().match(/\.([a-z0-9]+)$/);
+      return match ? match[1] : "";
+    };
+
+    const allowedExtensions = new Set(
+      String(fileInput.accept || "")
+        .split(",")
+        .map((entry) => entry.trim().replace(/^\./, "").toLowerCase())
+        .filter(Boolean)
+    );
+
+    const extensionByMimeType = new Map([
+      ["audio/aac", "aac"],
+      ["audio/flac", "flac"],
+      ["audio/m4a", "m4a"],
+      ["audio/mp4", "m4a"],
+      ["audio/mpeg", "mp3"],
+      ["audio/ogg", "ogg"],
+      ["audio/opus", "opus"],
+      ["audio/wav", "wav"],
+      ["audio/webm", "webm"],
+      ["audio/x-m4a", "m4a"],
+      ["audio/x-wav", "wav"],
+      ["video/mp4", "mp4"],
+      ["video/mpeg", "mpeg"],
+      ["video/webm", "webm"]
+    ]);
+
+    const normalizedAudioFile = (file, index = 0) => {
+      if (!file) return null;
+      const originalExtension = extensionFromName(file.name);
+      if (originalExtension && allowedExtensions.has(originalExtension)) {
+        return file;
+      }
+      const mimeType = String(file.type || "").toLowerCase();
+      const fallbackExtension = extensionByMimeType.get(mimeType);
+      if (!fallbackExtension || !allowedExtensions.has(fallbackExtension)) {
+        return null;
+      }
+      const fileName = `pasted-audio-${index + 1}.${fallbackExtension}`;
+      return new File([file], fileName, { type: file.type, lastModified: file.lastModified || Date.now() });
+    };
+
+    const audioFilesFromClipboard = (clipboardData) => {
+      if (!clipboardData) return [];
+      const files = Array.from(clipboardData.files || [])
+        .map((file, index) => normalizedAudioFile(file, index))
+        .filter(Boolean);
+      if (files.length) return files;
+
+      return Array.from(clipboardData.items || [])
+        .filter((item) => item.kind === "file")
+        .map((item) => item.getAsFile())
+        .map((file, index) => normalizedAudioFile(file, index))
+        .filter(Boolean);
+    };
+
     const renderFileName = (files) => {
       const selectedFiles = Array.from(files || []);
       if (!selectedFiles.length) {
@@ -940,6 +998,23 @@
       fileInput.files = transfer.files;
       renderFileName(fileInput.files);
       setUploadPanelOpen(true);
+    };
+
+    const assignPastedFiles = (files) => {
+      const selectedFiles = Array.from(files || []);
+      if (!selectedFiles.length) return false;
+      assignFiles(selectedFiles);
+      if (fileNameLabel) {
+        fileNameLabel.textContent =
+          selectedFiles.length === 1 ? `Pasted: ${selectedFiles[0].name}` : `Pasted: ${selectedFiles.length} files`;
+      }
+      if (transcribeStatus) {
+        transcribeStatus.textContent =
+          selectedFiles.length === 1
+            ? `Ready to transcribe pasted audio: ${selectedFiles[0].name}.`
+            : `Ready to transcribe ${selectedFiles.length} pasted audio files.`;
+      }
+      return true;
     };
 
     fileInput.addEventListener("change", () => {
@@ -992,6 +1067,13 @@
       dragDepth = 0;
       document.body.classList.remove("is-dragging-file");
       assignFiles(event.dataTransfer.files);
+    });
+
+    document.addEventListener("paste", (event) => {
+      const pastedFiles = audioFilesFromClipboard(event.clipboardData);
+      if (!pastedFiles.length) return;
+      event.preventDefault();
+      assignPastedFiles(pastedFiles);
     });
   }
 

@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 import logging
+import os
 import re
+import tempfile
+import threading
 import uuid
 from hashlib import sha256
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from shutil import copyfileobj
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows fallback for local development.
+    fcntl = None
 
 from config import (
     ALLOWED_EXTENSIONS,
@@ -40,6 +49,9 @@ from transcription import supported_models
 
 logger = logging.getLogger(__name__)
 DEFAULT_COLLECTION = "Inbox"
+_LOCKS_LOCK = threading.Lock()
+_JSON_LOCKS: dict[Path, threading.RLock] = {}
+_LOCK_DEPTH = threading.local()
 
 
 @dataclass
@@ -85,9 +97,92 @@ def ensure_dirs() -> None:
     for path in (DATA_DIR, UPLOAD_DIR, TRANSCRIPT_DIR):
         path.mkdir(parents=True, exist_ok=True)
     if not LIBRARY_PATH.exists():
-        LIBRARY_PATH.write_text("[]\n", encoding="utf-8")
+        write_json_file(LIBRARY_PATH, [])
     if not SETTINGS_PATH.exists():
-        SETTINGS_PATH.write_text(json.dumps(DEFAULT_SETTINGS, indent=2) + "\n", encoding="utf-8")
+        write_json_file(SETTINGS_PATH, DEFAULT_SETTINGS)
+
+
+def json_lock_path(path: Path) -> Path:
+    return path.with_name(f"{path.name}.lock")
+
+
+def thread_lock_for(path: Path) -> threading.RLock:
+    key = path.resolve(strict=False)
+    with _LOCKS_LOCK:
+        lock = _JSON_LOCKS.get(key)
+        if lock is None:
+            lock = threading.RLock()
+            _JSON_LOCKS[key] = lock
+        return lock
+
+
+def lock_depths() -> dict[Path, int]:
+    depths = getattr(_LOCK_DEPTH, "depths", None)
+    if depths is None:
+        depths = {}
+        _LOCK_DEPTH.depths = depths
+    return depths
+
+
+@contextmanager
+def locked_json_file(path: Path):
+    lock_path = json_lock_path(path)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    key = lock_path.resolve(strict=False)
+    thread_lock = thread_lock_for(lock_path)
+    with thread_lock:
+        depths = lock_depths()
+        depth = depths.get(key, 0)
+        if depth:
+            depths[key] = depth + 1
+            try:
+                yield
+            finally:
+                depths[key] -= 1
+            return
+
+        with lock_path.open("a+", encoding="utf-8") as lock_file:
+            if fcntl is not None:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+            depths[key] = 1
+            try:
+                yield
+            finally:
+                depths.pop(key, None)
+                if fcntl is not None:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def atomic_write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_name = ""
+    try:
+        fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+        with os.fdopen(fd, "w", encoding="utf-8") as temp_file:
+            temp_file.write(text)
+            temp_file.flush()
+            os.fsync(temp_file.fileno())
+        os.replace(temp_name, path)
+        try:
+            dir_fd = os.open(path.parent, os.O_RDONLY)
+        except OSError:
+            dir_fd = None
+        if dir_fd is not None:
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+    finally:
+        if temp_name:
+            try:
+                Path(temp_name).unlink(missing_ok=True)
+            except OSError:
+                pass
+
+
+def write_json_file(path: Path, payload) -> None:
+    with locked_json_file(path):
+        atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
 
 
 def backup_invalid_json(path: Path) -> Path:
@@ -99,22 +194,23 @@ def backup_invalid_json(path: Path) -> Path:
 
 
 def load_json_file(path: Path, default_value, expected_type: type):
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        backup_invalid_json(path)
-        path.write_text(json.dumps(default_value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        return default_value
-    except OSError:
-        path.write_text(json.dumps(default_value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        return default_value
+    with locked_json_file(path):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            backup_invalid_json(path)
+            write_json_file(path, default_value)
+            return default_value
+        except OSError:
+            write_json_file(path, default_value)
+            return default_value
 
-    if not isinstance(payload, expected_type):
-        backup_invalid_json(path)
-        path.write_text(json.dumps(default_value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        return default_value
+        if not isinstance(payload, expected_type):
+            backup_invalid_json(path)
+            write_json_file(path, default_value)
+            return default_value
 
-    return payload
+        return payload
 
 
 def is_allowed_file(filename: str) -> bool:
@@ -130,7 +226,7 @@ def load_settings() -> dict:
 
 def save_settings(settings: dict) -> None:
     ensure_dirs()
-    SETTINGS_PATH.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+    write_json_file(SETTINGS_PATH, settings)
 
 
 def load_library() -> list[TranscriptRecord]:
@@ -148,44 +244,45 @@ def migrate_library() -> int:
     ensure_dirs()
     settings = load_settings()
     initial_summary_settings = {"summary_provider": "extractive", "summary_sentences": settings["summary_sentences"]}
-    raw = load_json_file(LIBRARY_PATH, [], list)
-    migrated = []
-    changed_count = 0
+    with locked_json_file(LIBRARY_PATH):
+        raw = load_json_file(LIBRARY_PATH, [], list)
+        migrated = []
+        changed_count = 0
 
-    for item in raw:
-        if not isinstance(item, dict):
-            changed_count += 1
-            continue
+        for item in raw:
+            if not isinstance(item, dict):
+                changed_count += 1
+                continue
 
-        next_item = dict(item)
-        transcript_text = str(next_item.get("transcript_text", ""))
-        stored_summary = next_item.get("summary")
-        stored_provider = str(next_item.get("summary_provider", ""))
-        if not isinstance(stored_summary, list) or not stored_summary or not stored_provider:
-            summary, used_provider = generate_summary(
-                transcript_text,
-                str(next_item.get("language", DEFAULT_LANGUAGE)),
-                initial_summary_settings,
-            )
-            next_item["summary"] = summary
-            next_item["summary_provider"] = used_provider
-            if str(next_item.get("title_source", "manual")) == "auto":
-                fallback_title = Path(str(next_item.get("filename", ""))).stem.replace("_", " ")
-                next_item["title"] = generate_title_from_summary(summary, fallback_title)
-            changed_count += 1
+            next_item = dict(item)
+            transcript_text = str(next_item.get("transcript_text", ""))
+            stored_summary = next_item.get("summary")
+            stored_provider = str(next_item.get("summary_provider", ""))
+            if not isinstance(stored_summary, list) or not stored_summary or not stored_provider:
+                summary, used_provider = generate_summary(
+                    transcript_text,
+                    str(next_item.get("language", DEFAULT_LANGUAGE)),
+                    initial_summary_settings,
+                )
+                next_item["summary"] = summary
+                next_item["summary_provider"] = used_provider
+                if str(next_item.get("title_source", "manual")) == "auto":
+                    fallback_title = Path(str(next_item.get("filename", ""))).stem.replace("_", " ")
+                    next_item["title"] = generate_title_from_summary(summary, fallback_title)
+                changed_count += 1
 
-        migrated.append(record_from_payload(next_item))
+            migrated.append(record_from_payload(next_item))
 
-    if changed_count:
-        save_library(migrated)
+        if changed_count:
+            save_library(migrated)
 
-    return changed_count
+        return changed_count
 
 
 def save_library(records: list[TranscriptRecord]) -> None:
     ensure_dirs()
     payload = [asdict(record) for record in records]
-    LIBRARY_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_json_file(LIBRARY_PATH, payload)
 
 
 def coerce_float(value: object, default: float = 0.0) -> float:
@@ -344,10 +441,11 @@ def get_record(record_id: str) -> TranscriptRecord | None:
 
 
 def persist_record(record: TranscriptRecord) -> None:
-    records = load_library()
-    records = [item for item in records if item.id != record.id]
-    records.append(record)
-    save_library(records)
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        records = [item for item in records if item.id != record.id]
+        records.append(record)
+        save_library(records)
     record.transcript_path.write_text(record.transcript_text, encoding="utf-8")
 
 
@@ -442,25 +540,38 @@ def create_transcript_from_audio(
 
 
 def update_record_title_with_instruction_model(record_id: str) -> TranscriptRecord | None:
-    records = load_library()
-    updated_record = None
-    for record in records:
-        if record.id != record_id:
-            continue
-        if record.title_source != "auto":
-            return record
-        fallback_title = record.title or Path(record.filename).stem.replace("_", " ")
-        try:
-            record.title = generate_title_with_instruction_model(record.transcript_text, record.language, fallback_title)
-        except Exception as exc:
-            logger.info("background title generation failed record=%s: %s", record_id, str(exc).splitlines()[0] if str(exc) else exc.__class__.__name__)
-            return record
-        updated_record = record
-        break
-    if updated_record is None:
-        return None
-    save_library(records)
-    return updated_record
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        target = next((record for record in records if record.id == record_id), None)
+        if target is None:
+            return None
+        if target.title_source != "auto":
+            return target
+        transcript_text = target.transcript_text
+        language = target.language
+        fallback_title = target.title or Path(target.filename).stem.replace("_", " ")
+
+    try:
+        next_title = generate_title_with_instruction_model(transcript_text, language, fallback_title)
+    except Exception as exc:
+        logger.info("background title generation failed record=%s: %s", record_id, str(exc).splitlines()[0] if str(exc) else exc.__class__.__name__)
+        return get_record(record_id)
+
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated_record = None
+        for record in records:
+            if record.id != record_id:
+                continue
+            if record.title_source != "auto":
+                return record
+            record.title = next_title
+            updated_record = record
+            break
+        if updated_record is None:
+            return None
+        save_library(records)
+        return updated_record
 
 
 def create_transcript_from_upload(file_storage, model_name: str, language: str) -> TranscriptRecord:
@@ -477,17 +588,18 @@ def create_transcript_from_upload(file_storage, model_name: str, language: str) 
 
 def rename_record(record_id: str, title: str) -> bool:
     cleaned = slugify_title(title)
-    records = load_library()
-    updated = False
-    for record in records:
-        if record.id == record_id:
-            record.title = cleaned
-            record.title_source = "manual"
-            updated = True
-            break
-    if updated:
-        save_library(records)
-    return updated
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated = False
+        for record in records:
+            if record.id == record_id:
+                record.title = cleaned
+                record.title_source = "manual"
+                updated = True
+                break
+        if updated:
+            save_library(records)
+        return updated
 
 
 def normalize_tags(tags: list[object] | str) -> list[str]:
@@ -527,105 +639,131 @@ def build_transcript_text(segments: list[dict], fallback: str = "") -> str:
 
 
 def update_record_tags(record_id: str, tags: list[object] | str) -> TranscriptRecord | None:
-    records = load_library()
-    updated_record = None
-    for record in records:
-        if record.id == record_id:
-            record.tags = normalize_tags(tags)
-            updated_record = record
-            break
-    if updated_record is None:
-        return None
-    save_library(records)
-    return updated_record
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated_record = None
+        for record in records:
+            if record.id == record_id:
+                record.tags = normalize_tags(tags)
+                updated_record = record
+                break
+        if updated_record is None:
+            return None
+        save_library(records)
+        return updated_record
 
 
 def update_record_collection(record_id: str, collection: object) -> TranscriptRecord | None:
-    records = load_library()
-    updated_record = None
-    for record in records:
-        if record.id == record_id:
-            record.collection = normalize_collection(collection)
-            updated_record = record
-            break
-    if updated_record is None:
-        return None
-    save_library(records)
-    return updated_record
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated_record = None
+        for record in records:
+            if record.id == record_id:
+                record.collection = normalize_collection(collection)
+                updated_record = record
+                break
+        if updated_record is None:
+            return None
+        save_library(records)
+        return updated_record
 
 
 def update_record_notes(record_id: str, notes: object) -> TranscriptRecord | None:
-    records = load_library()
-    updated_record = None
-    for record in records:
-        if record.id == record_id:
-            record.notes = str(notes or "").strip()[:8000]
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated_record = None
+        for record in records:
+            if record.id == record_id:
+                record.notes = str(notes or "").strip()[:8000]
+                updated_record = record
+                break
+        if updated_record is None:
+            return None
+        save_library(records)
+        return updated_record
+
+
+def update_record_summary(record_id: str, summary: list[str], provider: str) -> TranscriptRecord | None:
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated_record = None
+        for record in records:
+            if record.id != record_id:
+                continue
+            record.summary = [str(entry) for entry in summary]
+            record.summary_provider = str(provider)
+            if record.title_source == "auto":
+                fallback_title = Path(record.filename).stem.replace("_", " ")
+                record.title = generate_title_from_summary(record.summary, fallback_title)
             updated_record = record
             break
-    if updated_record is None:
-        return None
-    save_library(records)
-    return updated_record
+        if updated_record is None:
+            return None
+        save_library(records)
+        return updated_record
 
 
 def update_segment_text(record_id: str, segment_id: int, text: str) -> TranscriptRecord | None:
     cleaned = " ".join(text.strip().split())
-    records = load_library()
-    updated_record = None
-    for record in records:
-        if record.id != record_id:
-            continue
-        for segment in record.segments:
-            if int(segment.get("id", -1)) == segment_id:
-                segment["text"] = cleaned
-                record.transcript_text = build_transcript_text(record.segments, record.transcript_text)
-                updated_record = record
-                break
-        break
-    if updated_record is None:
-        return None
-    save_library(records)
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated_record = None
+        for record in records:
+            if record.id != record_id:
+                continue
+            for segment in record.segments:
+                if int(segment.get("id", -1)) == segment_id:
+                    segment["text"] = cleaned
+                    record.transcript_text = build_transcript_text(record.segments, record.transcript_text)
+                    updated_record = record
+                    break
+            break
+        if updated_record is None:
+            return None
+        save_library(records)
     updated_record.transcript_path.write_text(updated_record.transcript_text, encoding="utf-8")
     return updated_record
 
 
 def update_segment_flags(record_id: str, segment_id: int, *, bookmarked: bool | None = None, highlighted: bool | None = None) -> TranscriptRecord | None:
-    records = load_library()
-    updated_record = None
-    for record in records:
-        if record.id != record_id:
-            continue
-        for segment in record.segments:
-            if int(segment.get("id", -1)) == segment_id:
-                if bookmarked is not None:
-                    segment["bookmarked"] = bookmarked
-                if highlighted is not None:
-                    segment["highlighted"] = highlighted
-                updated_record = record
-                break
-        break
-    if updated_record is None:
-        return None
-    save_library(records)
-    return updated_record
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated_record = None
+        for record in records:
+            if record.id != record_id:
+                continue
+            for segment in record.segments:
+                if int(segment.get("id", -1)) == segment_id:
+                    if bookmarked is not None:
+                        segment["bookmarked"] = bookmarked
+                    if highlighted is not None:
+                        segment["highlighted"] = highlighted
+                    updated_record = record
+                    break
+            break
+        if updated_record is None:
+            return None
+        save_library(records)
+        return updated_record
 
 
 def update_segment_speaker(record_id: str, segment_id: int, speaker: object) -> TranscriptRecord | None:
-    records = load_library()
-    updated_record = None
-    for record in records:
-        if record.id != record_id:
-            continue
-        for segment in record.segments:
-            if int(segment.get("id", -1)) == segment_id:
-                segment["speaker"] = normalize_speaker(speaker)
-                updated_record = record
-                break
-        break
-    if updated_record is None:
-        return None
-    save_library(records)
-    return updated_record
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated_record = None
+        for record in records:
+            if record.id != record_id:
+                continue
+            for segment in record.segments:
+                if int(segment.get("id", -1)) == segment_id:
+                    segment["speaker"] = normalize_speaker(speaker)
+                    updated_record = record
+                    break
+            break
+        if updated_record is None:
+            return None
+        save_library(records)
+        return updated_record
 
 
 def markdown_export(record: TranscriptRecord) -> str:
@@ -685,13 +823,14 @@ def cleaned_transcript_text(record: TranscriptRecord) -> str:
 
 
 def delete_record(record_id: str) -> bool:
-    records = load_library()
-    target = next((record for record in records if record.id == record_id), None)
-    if target is None:
-        return False
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        target = next((record for record in records if record.id == record_id), None)
+        if target is None:
+            return False
 
-    remaining = [record for record in records if record.id != record_id]
-    save_library(remaining)
+        remaining = [record for record in records if record.id != record_id]
+        save_library(remaining)
 
     for path in (target.audio_path, target.transcript_path):
         if path.exists():
@@ -700,8 +839,9 @@ def delete_record(record_id: str) -> bool:
 
 
 def delete_all_records() -> int:
-    records = load_library()
-    save_library([])
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        save_library([])
     deleted_count = 0
     for record in records:
         for path in (record.audio_path, record.transcript_path):

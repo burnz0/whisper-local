@@ -26,6 +26,7 @@ from storage import (
     cleaned_transcript_text,
     update_record_collection,
     update_record_notes,
+    update_record_summary,
     update_record_tags,
     update_segment_flags,
     update_segment_speaker,
@@ -33,7 +34,6 @@ from storage import (
 )
 from summaries import (
     generate_summary,
-    generate_title_from_summary,
     normalize_settings,
     slugify_title,
     format_duration,
@@ -532,27 +532,16 @@ def register_routes(app) -> None:
 
     @app.post("/transcripts/<record_id>/resummarize")
     def resummarize_route(record_id: str):
-        from storage import save_library
-
         settings = load_settings()
-        records = load_library()
-        target = next((record for record in records if record.id == record_id), None)
+        target = get_record(record_id)
         if target is None:
             return jsonify({"ok": False, "error": "Record not found."}), 404
 
         summary, provider = generate_summary(target.transcript_text, target.language, settings)
-        next_title = target.title
-        for record in records:
-            if record.id == record_id:
-                record.summary = summary
-                record.summary_provider = provider
-                if record.title_source == "auto":
-                    fallback_title = Path(record.filename).stem.replace("_", " ")
-                    record.title = generate_title_from_summary(summary, fallback_title)
-                next_title = record.title
-                break
-        save_library(records)
-        return jsonify({"ok": True, "summary": summary, "provider": provider, "title": next_title})
+        updated = update_record_summary(record_id, summary, provider)
+        if updated is None:
+            return jsonify({"ok": False, "error": "Record not found."}), 404
+        return jsonify({"ok": True, "summary": updated.summary, "provider": updated.summary_provider, "title": updated.title})
 
     @app.get("/audio/<filename>")
     def audio_file(filename: str):
