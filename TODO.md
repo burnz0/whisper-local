@@ -24,7 +24,7 @@ Product direction: keep Whisper Local a calm, local-first desktop browser worksp
 
 ## P1 - Local Analysis And Knowledge
 
-- [ ] Add durable background analysis job state for titles, summaries, action items, and entities.
+- [x] Add durable background analysis job state for titles, summaries, action items, and entities.
 - [ ] Add AI extraction for action items and entities behind the analysis provider boundary.
 - [ ] Implement the semantic search sidecar for transcript segments, notes, and summaries.
 - [ ] Add a small local-model smoke test script for Qwen title/summary generation before upgrading `transformers` to 5.x.
@@ -55,3 +55,4 @@ Product direction: keep Whisper Local a calm, local-first desktop browser worksp
 - [x] Added atomic JSON writes and file locking for local library/settings persistence.
 - [x] Added an opt-in production `whisper.cpp` backend adapter.
 - [x] Added `medium` to the supported Whisper model tiers and default benchmark matrix.
+- [x] Added durable JSON-backed analysis job state for local background analysis.

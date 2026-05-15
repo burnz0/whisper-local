@@ -10,6 +10,7 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 TRANSCRIPT_DIR = DATA_DIR / "transcripts"
 LIBRARY_PATH = DATA_DIR / "library.json"
 SETTINGS_PATH = DATA_DIR / "settings.json"
+ANALYSIS_JOBS_PATH = DATA_DIR / "analysis-jobs.json"
 
 MODELS = ("tiny", "base", "small", "medium", "turbo")
 LANGUAGES = {"de": "German", "en": "English"}

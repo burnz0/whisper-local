@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 import app
+import analysis_jobs
 import benchmarks
 import config
 import jobs
@@ -377,6 +378,48 @@ class BackendBehaviorTest(unittest.TestCase):
         finally:
             with jobs._LOCK:
                 jobs._JOBS.pop(job.id, None)
+
+    def test_analysis_jobs_are_durable_for_supported_kinds(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            jobs_path = Path(temp_dir) / "analysis-jobs.json"
+
+            with mock.patch.object(analysis_jobs, "ANALYSIS_JOBS_PATH", jobs_path):
+                created_jobs = [
+                    analysis_jobs.create_analysis_job(kind, "abc123")
+                    for kind in analysis_jobs.ANALYSIS_JOB_KINDS
+                ]
+                updated = analysis_jobs.update_analysis_job(
+                    created_jobs[0].id,
+                    status="complete",
+                    started_at=1.0,
+                    completed_at=2.0,
+                    result={"title": "Generated title"},
+                )
+                persisted_jobs = analysis_jobs.load_analysis_jobs()
+                latest_title = analysis_jobs.latest_analysis_job("abc123", "title")
+
+            payload = json.loads(jobs_path.read_text(encoding="utf-8"))
+            self.assertEqual({job.kind for job in persisted_jobs}, set(analysis_jobs.ANALYSIS_JOB_KINDS))
+            self.assertEqual(updated.status, "complete")
+            self.assertEqual(latest_title.result["title"], "Generated title")
+            self.assertEqual(len(payload), len(analysis_jobs.ANALYSIS_JOB_KINDS))
+
+    def test_background_title_job_updates_durable_analysis_state(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            jobs_path = Path(temp_dir) / "analysis-jobs.json"
+            fake_record = mock.Mock(title="Generated title", title_source="auto")
+
+            with mock.patch.object(analysis_jobs, "ANALYSIS_JOBS_PATH", jobs_path), mock.patch.object(
+                storage, "update_record_title_with_instruction_model", return_value=fake_record
+            ):
+                analysis_job = analysis_jobs.create_analysis_job("title", "abc123")
+                jobs._run_background_title_job(analysis_job.id, "abc123")
+                persisted_job = analysis_jobs.latest_analysis_job("abc123", "title")
+
+            self.assertEqual(persisted_job.status, "complete")
+            self.assertIsNotNone(persisted_job.started_at)
+            self.assertIsNotNone(persisted_job.completed_at)
+            self.assertEqual(persisted_job.result["title"], "Generated title")
 
     def test_transcribe_route_accepts_multiple_files_as_import_batch(self):
         class FakeBatch:

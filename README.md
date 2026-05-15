@@ -6,6 +6,7 @@ Private local-first Flask workspace for turning audio recordings into searchable
 
 - Upload one or more audio files and queue local transcription jobs.
 - Store transcript history in `data/library.json`, with audio in `data/uploads/` and downloads in `data/transcripts/`.
+- Persist background analysis job state in `data/analysis-jobs.json`.
 - Review segment-based transcripts with timestamps, search, rename, delete, copy, download, and local audio playback.
 - Generate local summaries and titles through a separate analysis provider boundary.
 - Keep extractive summaries as the safe fallback when generative local models are unavailable or fail.
@@ -98,6 +99,7 @@ whisper-local/
   storage.py             JSON-backed library and settings persistence
   transcription.py       Transcription backend interface and implementations
   analysis.py            Local analysis provider interface
+  analysis_jobs.py       Durable local analysis job state
   summaries.py           Summary helpers and fallback behavior
   benchmarks.py          Backend benchmark runner
   templates/             Flask templates
@@ -109,7 +111,7 @@ whisper-local/
 ## Architecture Notes
 
 - `requirements-core.txt` contains the web app dependency; `requirements-ml.txt` contains local transcription and analysis dependencies.
-- Local transcript history and settings live in `data/library.json` and `data/settings.json`; these files are ignored by git.
+- Local transcript history, settings, and durable analysis job state live in `data/library.json`, `data/settings.json`, and `data/analysis-jobs.json`; these files are ignored by git.
 - If old local records need metadata backfilled, run `make migrate`.
 - To check local runtime dependencies, run `make deps`.
 - Persistence intentionally stays JSON-backed while the app is single-user and local-first. Consider SQLite only when contention, corruption risk, slow sidecar rebuilds, cross-record joins, or reliable partial updates become real limitations.

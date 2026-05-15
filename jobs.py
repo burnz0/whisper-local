@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
+from analysis_jobs import create_analysis_job, update_analysis_job
 from errors import friendly_transcription_error
 from storage import SavedUpload, create_transcript_from_audio, find_duplicate_record
 from transcription import processing_mode_label
@@ -270,18 +271,29 @@ def _run_job(job_id: str, audio_path: Path, transcript_id: str, source_name: str
         _update_job(job_id, status="failed", error=error, completed_at=time.time())
         return
     _update_job(job_id, status="complete", record_id=record.id, completed_at=time.time())
-    _ANALYSIS_EXECUTOR.submit(_run_background_title_job, record.id)
+    analysis_job = create_analysis_job("title", record.id)
+    _ANALYSIS_EXECUTOR.submit(_run_background_title_job, analysis_job.id, record.id)
     logger.info("transcription job complete job=%s record=%s", job_id, record.id)
 
 
-def _run_background_title_job(record_id: str) -> None:
+def _run_background_title_job(analysis_job_id: str, record_id: str) -> None:
+    update_analysis_job(analysis_job_id, status="running", started_at=time.time())
     try:
         from storage import update_record_title_with_instruction_model
 
         updated = update_record_title_with_instruction_model(record_id)
         if updated is not None:
+            update_analysis_job(
+                analysis_job_id,
+                status="complete",
+                completed_at=time.time(),
+                result={"title": updated.title, "title_source": updated.title_source},
+            )
             logger.info("background title generation complete record=%s title=%s", record_id, updated.title)
+            return
+        update_analysis_job(analysis_job_id, status="failed", completed_at=time.time(), error="Record not found.")
     except Exception:
+        update_analysis_job(analysis_job_id, status="failed", completed_at=time.time(), error="Title generation failed.")
         logger.exception("background title generation failed record=%s", record_id)
 
 
