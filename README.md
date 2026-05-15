@@ -60,6 +60,7 @@ make test
 make deps
 make migrate
 make benchmark AUDIO=/path/to/audio.ogg LANGUAGE=de EXPECTED_TERMS=Festival,Lagerhallen
+make smoke-analysis
 ```
 
 The benchmark command reports timing, realtime factor, expected-term coverage, candidate backend availability, and a recommendation. Include whisper.cpp with:
@@ -100,6 +101,7 @@ whisper-local/
   transcription.py       Transcription backend interface and implementations
   analysis.py            Local analysis provider interface
   analysis_jobs.py       Durable local analysis job state
+  scripts/               Local smoke-test helpers
   summaries.py           Summary helpers and fallback behavior
   benchmarks.py          Backend benchmark runner
   templates/             Flask templates
@@ -121,6 +123,7 @@ whisper-local/
 - Default manual summary provider is the quality local Qwen model (`Qwen/Qwen3-1.7B`).
 - Background auto-title generation uses the faster Qwen model (`Qwen/Qwen3-0.6B`).
 - Override models with `QUALITY_INSTRUCTION_MODEL_NAME=...` or `FAST_INSTRUCTION_MODEL_NAME=...`.
+- Before upgrading `transformers`, run `make smoke-analysis` to verify Qwen title and summary generation still work with the local model APIs.
 - Active transcription backend: OpenAI Whisper by default, with opt-in whisper.cpp support through `TRANSCRIPTION_BACKEND=whisper.cpp`. Supported models are discovered from the installed backend and configured model paths. The benchmark command defaults to the full comparison matrix: `tiny`, `base`, `small`, `medium`, and `turbo`.
 - Current non-goals: cloud transcription, hosted storage, multi-user collaboration, heavy database migration before it is needed, and a large framework rewrite.
 

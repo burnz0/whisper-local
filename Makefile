@@ -11,7 +11,7 @@ BACKENDS ?= openai-whisper,faster-whisper,whisper.cpp
 VENV_PYTHON := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
-.PHONY: venv install install-core install-ml run check test migrate deps benchmark
+.PHONY: venv install install-core install-ml run check test migrate deps benchmark smoke-analysis
 
 $(VENV_PYTHON):
 	$(PYTHON) -m venv $(VENV)
@@ -45,3 +45,6 @@ deps:
 
 benchmark:
 	$(VENV_PYTHON) benchmarks.py --audio "$(AUDIO)" --models "$(MODELS)" --backends "$(BACKENDS)" --language "$(LANGUAGE)" --expected-terms "$(EXPECTED_TERMS)"
+
+smoke-analysis:
+	$(VENV_PYTHON) scripts/smoke_qwen_analysis.py --language "$(LANGUAGE)"
