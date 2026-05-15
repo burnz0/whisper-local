@@ -33,6 +33,8 @@
   const tagFilter = document.getElementById("tag-filter");
   const tagEditor = document.getElementById("tag-editor");
   const tagsInput = document.getElementById("tags-input");
+  const metadataSummary = document.getElementById("metadata-summary");
+  const metadataSaveStatus = document.getElementById("metadata-save-status");
   const speakerFilter = document.getElementById("speaker-filter");
   const notesEditor = document.getElementById("notes-editor");
   const notesInput = document.getElementById("notes-input");
@@ -736,7 +738,7 @@
         button.classList.toggle("is-active", isActive);
         button.setAttribute("aria-pressed", String(isActive));
       });
-      search.placeholder = searchScope === "summary" ? "Search summary..." : "Search transcript...";
+      search.placeholder = searchScope === "summary" ? "Find in summary..." : "Find in transcript...";
       if (speakerFilter) speakerFilter.disabled = searchScope === "summary";
       window.localStorage.setItem("whisperLocal.searchScope", searchScope);
     };
@@ -749,7 +751,7 @@
         if (!search.value.trim() && !speakerFiltered) {
           searchCount.textContent = "";
         } else if (hasMatches) {
-          searchCount.textContent = `${activeSearchIndex + 1} of ${searchMatches.length} ${searchScope} matches`;
+          searchCount.textContent = `Match ${activeSearchIndex + 1} / ${searchMatches.length}`;
         } else {
           searchCount.textContent = "0 matches";
         }
@@ -1105,20 +1107,71 @@
     });
   }
 
-  if (collectionEditor && collectionInput && state) {
-    collectionEditor.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const response = await fetch(`/transcripts/${state.recordId}/collection`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ collection: collectionInput.value })
+  const setMetadataStatus = (message, kind = "saved") => {
+    if (!metadataSaveStatus) return;
+    metadataSaveStatus.textContent = message;
+    metadataSaveStatus.dataset.status = kind;
+  };
+
+  const renderMetadataSummary = () => {
+    if (!metadataSummary) return;
+    const collection = collectionInput ? collectionInput.value.trim() || "Inbox" : "Inbox";
+    const tags = tagsInput
+      ? tagsInput.value
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : [];
+    metadataSummary.textContent = tags.length ? `${collection} · ${tags.join(", ")}` : collection;
+  };
+
+  if ((collectionEditor || tagEditor) && state) {
+    [collectionEditor, tagEditor].forEach((form) => {
+      if (!form) return;
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
       });
-      const payload = await response.json();
-      if (!payload.ok) return;
+    });
+    renderMetadataSummary();
+    setMetadataStatus("Saved locally");
+  }
+
+  if (collectionInput && state) {
+    let lastSavedCollection = collectionInput.value.trim() || "Inbox";
+    let collectionSaveTimer = null;
+    const saveCollection = async () => {
+      const requestedCollection = collectionInput.value.trim() || "Inbox";
+      if (requestedCollection === lastSavedCollection) {
+        renderMetadataSummary();
+        setMetadataStatus("Saved locally");
+        return;
+      }
+      setMetadataStatus("Saving...", "saving");
+      let payload;
+      try {
+        const response = await fetch(`/transcripts/${state.recordId}/collection`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ collection: requestedCollection })
+        });
+        payload = await response.json();
+      } catch (error) {
+        setMetadataStatus("Could not save details.", "error");
+        console.error(error);
+        return;
+      }
+      if (!payload.ok) {
+        setMetadataStatus(payload.error || "Could not save details.", "error");
+        return;
+      }
       const nextCollection = payload.collection || "Inbox";
       const row = document.querySelector(`[data-record-row="${state.recordId}"]`);
       const previousCollection = row ? row.dataset.collection : "";
       collectionInput.value = nextCollection;
+      lastSavedCollection = nextCollection;
       document.querySelectorAll(`[data-record-collection-label="${state.recordId}"]`).forEach((label) => {
         label.textContent = nextCollection;
       });
@@ -1129,25 +1182,73 @@
         adjustCollectionCount(nextCollection, 1);
       }
       setCollectionFilter(activeCollectionFilter);
-    });
+      renderMetadataSummary();
+      setMetadataStatus("Saved locally");
+    };
+    const scheduleCollectionSave = () => {
+      renderMetadataSummary();
+      setMetadataStatus("Saving...", "saving");
+      window.clearTimeout(collectionSaveTimer);
+      collectionSaveTimer = window.setTimeout(saveCollection, 700);
+    };
+    collectionInput.addEventListener("input", scheduleCollectionSave);
+    collectionInput.addEventListener("change", saveCollection);
+    collectionInput.addEventListener("blur", saveCollection);
   }
 
-  if (tagEditor && tagsInput && state) {
-    tagEditor.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const response = await fetch(`/transcripts/${state.recordId}/tags`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags: tagsInput.value.split(",") })
-      });
-      const payload = await response.json();
+  if (tagsInput && state) {
+    let lastSavedTags = tagsInput.value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .join(", ");
+    let tagSaveTimer = null;
+    const saveTags = async () => {
+      const requestedTags = tagsInput.value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const requestedLabel = requestedTags.join(", ");
+      if (requestedLabel === lastSavedTags) {
+        renderMetadataSummary();
+        setMetadataStatus("Saved locally");
+        return;
+      }
+      setMetadataStatus("Saving...", "saving");
+      let payload;
+      try {
+        const response = await fetch(`/transcripts/${state.recordId}/tags`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tags: requestedTags })
+        });
+        payload = await response.json();
+      } catch (error) {
+        setMetadataStatus("Could not save details.", "error");
+        console.error(error);
+        return;
+      }
       if (payload.ok) {
         tagsInput.value = payload.tags.join(", ");
+        lastSavedTags = tagsInput.value;
         const row = document.querySelector(`[data-record-row="${state.recordId}"]`);
         if (row) row.dataset.tags = payload.tags.join("|");
         setLibraryFilters(activeCollectionFilter, activeTagFilter);
+        renderMetadataSummary();
+        setMetadataStatus("Saved locally");
+      } else {
+        setMetadataStatus(payload.error || "Could not save details.", "error");
       }
-    });
+    };
+    const scheduleTagSave = () => {
+      renderMetadataSummary();
+      setMetadataStatus("Saving...", "saving");
+      window.clearTimeout(tagSaveTimer);
+      tagSaveTimer = window.setTimeout(saveTags, 700);
+    };
+    tagsInput.addEventListener("input", scheduleTagSave);
+    tagsInput.addEventListener("change", saveTags);
+    tagsInput.addEventListener("blur", saveTags);
   }
 
   if (notesEditor && notesInput && state) {

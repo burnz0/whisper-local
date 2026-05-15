@@ -232,12 +232,43 @@
                 </button>
               </div>
               <div class="meta-row">
-                <span>{{ selected.created_at[:10] }}</span>
-                <span>{{ selected.created_at[11:16] }}</span>
-                <span>{{ selected_duration_seconds|round|int }}s</span>
-                <span>{{ languages[selected.language] }} ({{ selected.language }})</span>
-                <span>{{ selected.model }}</span>
+                <span class="meta-chip meta-chip--context">{{ selected.created_at[:10] }}</span>
+                <span class="meta-chip meta-chip--context">{{ selected.created_at[11:16] }}</span>
+                <span class="meta-chip meta-chip--context">{{ selected_duration_seconds|round|int }}s</span>
+                <span class="meta-chip meta-chip--technical">{{ languages[selected.language] }} ({{ selected.language }})</span>
+                <span class="meta-chip meta-chip--technical">{{ selected.model }}</span>
               </div>
+            </div>
+            <div class="detail-header__side">
+              <div class="actions" aria-label="Transcript actions">
+                <div class="utility-group" aria-label="Export">
+                <a class="icon-button" href="{{ url_for('download_text', record_id=selected.id) }}" title="Download text" aria-label="Download text" data-action-label="Text">
+                  <span aria-hidden="true">⇩</span>
+                </a>
+                <a class="icon-button" href="{{ url_for('download_markdown', record_id=selected.id) }}" title="Download Markdown" aria-label="Download Markdown" data-action-label="Markdown">
+                  <span aria-hidden="true">M</span>
+                </a>
+                <a class="icon-button" href="{{ url_for('download_json', record_id=selected.id) }}" title="Download JSON" aria-label="Download JSON" data-action-label="JSON">
+                  <span aria-hidden="true">{}</span>
+                </a>
+                <a class="icon-button" href="{{ url_for('download_clean_text', record_id=selected.id) }}" title="Download cleaned text" aria-label="Download cleaned text" data-action-label="Clean">
+                  <span aria-hidden="true">C</span>
+                </a>
+                </div>
+                <div class="utility-group" aria-label="Manage">
+                <button class="icon-button" id="copy-button" title="Copy transcript" aria-label="Copy transcript" data-action-label="Copy">
+                  <span aria-hidden="true">⧉</span>
+                </button>
+                <button class="icon-button icon-button--danger" id="delete-button" title="Delete transcript" aria-label="Delete transcript" data-action-label="Delete">
+                  <span aria-hidden="true">✕</span>
+                </button>
+                </div>
+              </div>
+              <details class="metadata-details">
+                <summary>
+                  <span>Details</span>
+                  <small id="metadata-summary">{{ selected.collection }}{% if selected.tags %} • {{ selected.tags|join(', ') }}{% endif %}</small>
+                </summary>
               <div class="metadata-editors">
                 <form class="metadata-editor" id="collection-editor">
                   <label for="collection-input">Collection</label>
@@ -247,42 +278,25 @@
                     <option value="{{ collection.name }}"></option>
                     {% endfor %}
                   </datalist>
-                  <button class="secondary-action" type="submit">Save</button>
                 </form>
                 <form class="metadata-editor metadata-editor--tags" id="tag-editor">
                   <label for="tags-input">Tags</label>
                   <input type="text" id="tags-input" value="{{ selected.tags|join(', ') }}" placeholder="meeting, idea, follow-up">
-                  <button class="secondary-action" type="submit">Save</button>
                 </form>
+                <small class="metadata-save-status" id="metadata-save-status">Saved locally</small>
               </div>
-            </div>
-            <div class="actions">
-              <a class="icon-button" href="{{ url_for('download_text', record_id=selected.id) }}" title="Download text" aria-label="Download text">
-                <span aria-hidden="true">⇩</span>
-              </a>
-              <a class="icon-button" href="{{ url_for('download_markdown', record_id=selected.id) }}" title="Download Markdown" aria-label="Download Markdown">
-                <span aria-hidden="true">M</span>
-              </a>
-              <a class="icon-button" href="{{ url_for('download_json', record_id=selected.id) }}" title="Download JSON" aria-label="Download JSON">
-                <span aria-hidden="true">{}</span>
-              </a>
-              <a class="icon-button" href="{{ url_for('download_clean_text', record_id=selected.id) }}" title="Download cleaned text" aria-label="Download cleaned text">
-                <span aria-hidden="true">C</span>
-              </a>
-              <button class="icon-button" id="copy-button" title="Copy transcript" aria-label="Copy transcript">
-                <span aria-hidden="true">⧉</span>
-              </button>
-              <button class="icon-button icon-button--danger" id="delete-button" title="Delete transcript" aria-label="Delete transcript">
-                <span aria-hidden="true">✕</span>
-              </button>
+              </details>
             </div>
           </header>
 
           <section class="tabs">
+            <div class="view-tabs" aria-label="View">
             <button class="tab is-active" data-tab-target="transcript-pane">Transcript</button>
             <button class="tab" data-tab-target="plain-text-pane">Text</button>
             <button class="tab" data-tab-target="summary-pane">Summary</button>
             <button class="tab" data-tab-target="notes-pane">Notes</button>
+            </div>
+            <div class="transcript-tools" aria-label="Transcript tools">
             <div class="density-toggle" aria-label="Transcript density">
               <button class="density-button is-active" type="button" data-density="comfortable" aria-pressed="true">Comfort</button>
               <button class="density-button" type="button" data-density="compact" aria-pressed="false">Compact</button>
@@ -293,7 +307,7 @@
                 <button class="search-scope-button" type="button" data-search-scope="summary" aria-pressed="false">Summary</button>
               </div>
               <div class="search-input-row">
-                <input type="search" id="segment-search" placeholder="Search transcript...">
+                <input type="search" id="segment-search" placeholder="Find in transcript...">
                 <button class="search-nav-button" type="button" id="segment-search-prev" aria-label="Previous search result" disabled>Prev</button>
                 <button class="search-nav-button" type="button" id="segment-search-next" aria-label="Next search result" disabled>Next</button>
               </div>
@@ -304,6 +318,7 @@
                 {% endfor %}
               </select>
               <small class="search-count" id="segment-search-count" aria-live="polite"></small>
+            </div>
             </div>
           </section>
 
