@@ -215,13 +215,13 @@ def candidate_status(name: str) -> dict:
         executable = shutil.which("whisper-cli")
         return {
             "backend": name,
-            "status": "adapter_missing" if executable else "unavailable",
+            "status": "missing_model" if executable else "unavailable",
             "installed": bool(executable),
             "executable": executable,
-            "reason": "whisper-cli is installed but this app has no GGML model adapter yet."
+            "reason": "whisper-cli is installed but no GGML model path was found for this benchmark."
             if executable
             else "Install whisper.cpp and make whisper-cli available before benchmarking this candidate.",
-            "next_step": "Add a whisper.cpp adapter with an explicit GGML model path and run the same audio matrix.",
+            "next_step": "Set WHISPER_CPP_MODEL or pass --whisper-cpp-model, then run the same audio matrix.",
         }
     return {"backend": name, "status": "unknown", "reason": "Unknown benchmark candidate."}
 
@@ -247,7 +247,7 @@ def recommend_backend(results: list[dict]) -> dict:
     else:
         best = min(completed, key=lambda item: float(item["realtime_factor"]))
 
-    unavailable = [item["backend"] for item in results if item.get("status") in {"unavailable", "adapter_missing"}]
+    unavailable = [item["backend"] for item in results if item.get("status") in {"unavailable", "adapter_missing", "missing_model"}]
     quality = best.get("quality", {})
     if unavailable:
         return {

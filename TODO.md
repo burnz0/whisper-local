@@ -17,7 +17,7 @@ Product direction: keep Whisper Local a calm, local-first desktop browser worksp
 
 ## P0 - Transcription Backend
 
-- [ ] Build a production `whisper.cpp` backend adapter with model path validation, model download/setup guidance, timing, errors, and capability metadata.
+- [x] Build a production `whisper.cpp` backend adapter with model path validation, model download/setup guidance, timing, errors, and capability metadata.
 - [ ] Expand the benchmark corpus across German and English audio, including short, long, noisy, conversational, and cleaner samples.
 - [ ] Compare `tiny`, `base`, `small`, `medium`, and `turbo` where supported before changing the default backend or model.
 - [x] Add atomic JSON writes and file locking around library/settings writes that can race with background jobs or UI edits.
@@ -53,3 +53,4 @@ Product direction: keep Whisper Local a calm, local-first desktop browser worksp
 - [x] Added queued-job cancellation semantics and documented active backend cancellation limits.
 - [x] Added lightweight benchmark commands for comparing transcription backends.
 - [x] Added atomic JSON writes and file locking for local library/settings persistence.
+- [x] Added an opt-in production `whisper.cpp` backend adapter.

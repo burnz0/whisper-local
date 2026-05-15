@@ -197,6 +197,7 @@ def build_local_info() -> list[dict[str, str]]:
         {"label": "Transcription backend", "value": backend.label},
         {"label": "Backend mode", "value": backend.active_device_label},
         {"label": "Supported models", "value": ", ".join(backend.supported_models)},
+        {"label": "Backend setup", "value": backend.setup_hint},
         {"label": "Active cancellation", "value": "No" if not backend.can_cancel_active_job else "Yes"},
         {"label": "Required dependency health", "value": "OK" if not missing_required else f"Missing/unsupported: {', '.join(missing_required)}"},
         {"label": "Storage path", "value": str(DATA_DIR)},
@@ -211,10 +212,26 @@ def build_local_info() -> list[dict[str, str]]:
 
 
 def build_model_download_info() -> list[dict[str, str]]:
+    backend = active_backend_info()
     cache_root = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
     whisper_cache = cache_root / "whisper"
     disk_root = DATA_DIR if DATA_DIR.exists() else DATA_DIR.parent
     usage = shutil.disk_usage(disk_root)
+    if backend.name == "whisper.cpp":
+        model_paths = dict(zip(backend.supported_models, backend.model_paths))
+        return [
+            {
+                "name": model,
+                "label": model.capitalize(),
+                "status": "Ready" if model in model_paths else "Missing GGML model",
+                "size": format_bytes(Path(model_paths[model]).stat().st_size) if model in model_paths and Path(model_paths[model]).exists() else "Manual download",
+                "eta": "Ready now" if model in model_paths else "Set WHISPER_CPP_MODEL_DIR or WHISPER_CPP_MODEL",
+                "storage": format_bytes(usage.free),
+                "retry": backend.setup_hint,
+                "cancel": "Active whisper.cpp jobs cannot be cancelled from this panel.",
+            }
+            for model in model_choices()
+        ]
     expected_sizes = {
         "tiny": "~75 MB",
         "base": "~142 MB",

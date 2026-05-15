@@ -27,6 +27,29 @@ def module_installed(name: str) -> bool:
 def runtime_dependency_report() -> list[DependencyStatus]:
     backend = active_backend_info()
     python_supported = sys.version_info >= (3, 11)
+    backend_dependencies = []
+    if backend.name == "whisper.cpp":
+        backend_dependencies.extend(
+            [
+                DependencyStatus("whisper-cli", "required", "installed" if shutil.which("whisper-cli") else "missing", "active transcription backend executable"),
+                DependencyStatus("GGML whisper.cpp model", "required", "installed" if backend.supported_models else "missing", backend.setup_hint),
+                DependencyStatus("ffmpeg", "required", "installed" if shutil.which("ffmpeg") else "missing", "converts non-native uploads for whisper.cpp"),
+            ]
+        )
+    else:
+        backend_dependencies.extend(
+            [
+                DependencyStatus(
+                    "openai-whisper",
+                    "required",
+                    "installed" if module_installed("whisper") else "missing",
+                    f"active transcription backend: {backend.label}",
+                ),
+                DependencyStatus("ffmpeg", "required", "installed" if shutil.which("ffmpeg") else "missing", "audio decoding executable"),
+                DependencyStatus("torch", "required", "installed" if module_installed("torch") else "missing", f"active mode: {backend.active_device_label}"),
+            ]
+        )
+
     return [
         DependencyStatus(
             "Python",
@@ -35,19 +58,12 @@ def runtime_dependency_report() -> list[DependencyStatus]:
             f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}; target is 3.11 or 3.12",
         ),
         DependencyStatus("Flask", "required", "installed" if module_installed("flask") else "missing", "web server"),
-        DependencyStatus(
-            "openai-whisper",
-            "required",
-            "installed" if module_installed("whisper") else "missing",
-            f"active transcription backend: {backend.label}",
-        ),
-        DependencyStatus("ffmpeg", "required", "installed" if shutil.which("ffmpeg") else "missing", "audio decoding executable"),
-        DependencyStatus("torch", "required", "installed" if module_installed("torch") else "missing", f"active mode: {backend.active_device_label}"),
+        *backend_dependencies,
         DependencyStatus("transformers", "optional", "installed" if module_installed("transformers") else "missing", "Qwen and mT5 local analysis"),
         DependencyStatus("sentencepiece", "optional", "installed" if module_installed("sentencepiece") else "missing", f"mT5 tokenizer for {SUMMARY_MODEL_NAME}"),
         DependencyStatus("protobuf", "optional", "installed" if module_installed("google.protobuf") else "missing", "mT5 tokenizer dependency"),
         DependencyStatus("faster-whisper", "optional", "installed" if module_installed("faster_whisper") else "missing", "benchmark candidate only"),
-        DependencyStatus("whisper.cpp", "optional", "installed" if shutil.which("whisper-cli") else "missing", "benchmark candidate executable"),
+        DependencyStatus("whisper.cpp", "optional", "installed" if shutil.which("whisper-cli") else "missing", "opt-in backend and benchmark candidate"),
         DependencyStatus("Qwen fast title model", "optional", "configured", FAST_INSTRUCTION_MODEL_NAME),
         DependencyStatus("Qwen quality summary model", "optional", "configured", QUALITY_INSTRUCTION_MODEL_NAME),
     ]

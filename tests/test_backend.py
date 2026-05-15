@@ -226,6 +226,76 @@ class BackendBehaviorTest(unittest.TestCase):
 
             self.assertEqual(discovered, real_model)
 
+    def test_whisper_cpp_backend_reports_model_paths_and_setup_hint(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            model_path = root / "ggml-base.bin"
+            model_path.write_bytes(b"model")
+
+            with mock.patch.dict("os.environ", {"WHISPER_CPP_MODEL": "", "WHISPER_CPP_MODEL_DIR": str(root)}, clear=False), mock.patch.object(
+                transcription.shutil, "which", return_value="/usr/local/bin/whisper-cli"
+            ):
+                backend = transcription.WhisperCppBackend()
+                info = backend.info()
+
+            self.assertTrue(info.installed)
+            self.assertEqual(info.name, "whisper.cpp")
+            self.assertEqual(info.supported_models, ("base",))
+            self.assertEqual(info.model_paths, (str(model_path),))
+            self.assertIn("WHISPER_CPP_MODEL", info.setup_hint)
+
+    def test_whisper_cpp_json_parser_builds_segments(self):
+        text, segments = transcription.parse_whisper_cpp_json(
+            {
+                "transcription": [
+                    {"offsets": {"from": 0, "to": 1250}, "text": "Hallo Welt."},
+                    {"timestamps": {"from": "00:00:01,250", "to": "00:00:03,000"}, "text": "Noch ein Satz."},
+                ]
+            }
+        )
+
+        self.assertEqual(text, "Hallo Welt. Noch ein Satz.")
+        self.assertEqual(segments[0]["start"], 0)
+        self.assertEqual(segments[0]["end"], 1.25)
+        self.assertEqual(segments[1]["start_label"], "00:01")
+        self.assertEqual(segments[1]["end_label"], "00:03")
+
+    def test_whisper_cpp_backend_transcribes_via_cli_json_output(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            model_path = root / "ggml-base.bin"
+            audio_path = root / "voice.ogg"
+            model_path.write_bytes(b"model")
+            audio_path.write_bytes(b"audio")
+
+            def fake_run(command, **_kwargs):
+                output_base = Path(command[command.index("-of") + 1])
+                output_base.with_suffix(".json").write_text(
+                    json.dumps(
+                        {
+                            "transcription": [
+                                {"offsets": {"from": 0, "to": 1400}, "text": "Hallo von whisper cpp."},
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+                return mock.Mock(returncode=0, stdout="", stderr="")
+
+            with mock.patch.dict("os.environ", {"WHISPER_CPP_MODEL": "", "WHISPER_CPP_MODEL_DIR": str(root)}, clear=False), mock.patch.object(
+                transcription.shutil, "which", return_value="/usr/local/bin/whisper-cli"
+            ), mock.patch.object(transcription.subprocess, "run", side_effect=fake_run) as run_mock, mock.patch.object(
+                transcription, "media_duration_seconds", return_value=1.4
+            ):
+                backend = transcription.WhisperCppBackend()
+                result = backend.transcribe(audio_path, "base", "de")
+
+            self.assertEqual(result.text, "Hallo von whisper cpp.")
+            self.assertEqual(result.duration_seconds, 1.4)
+            self.assertEqual(len(result.segments), 1)
+            self.assertIn("-oj", run_mock.call_args.args[0])
+            self.assertIn(str(model_path), run_mock.call_args.args[0])
+
     def test_trailing_asr_artifact_block_is_trimmed(self):
         segments = [
             {"id": 0, "text": "Wir sprechen ueber die Beziehung."},

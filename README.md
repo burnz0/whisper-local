@@ -67,6 +67,28 @@ The benchmark command reports timing, realtime factor, expected-term coverage, c
 WHISPER_CPP_MODEL=/path/to/ggml-base.bin make benchmark AUDIO=/path/to/audio.ogg MODELS=base LANGUAGE=de
 ```
 
+## Transcription Backends
+
+OpenAI Whisper remains the default production backend:
+
+```bash
+make run
+```
+
+`whisper.cpp` is available as an opt-in backend when `whisper-cli` is installed and a real GGML model path is configured:
+
+```bash
+TRANSCRIPTION_BACKEND=whisper.cpp WHISPER_CPP_MODEL=/path/to/ggml-base.bin make run
+```
+
+Or point at a directory containing files named `ggml-tiny.bin`, `ggml-base.bin`, `ggml-small.bin`, and so on:
+
+```bash
+TRANSCRIPTION_BACKEND=whisper.cpp WHISPER_CPP_MODEL_DIR=/path/to/whisper-cpp-models make run
+```
+
+Native whisper.cpp inputs are `flac`, `mp3`, `ogg`, and `wav`; other supported upload formats are converted through `ffmpeg` before transcription. The settings panel reports the active backend, supported models, model paths, setup guidance, and active-job cancellation capability.
+
 ## Repo Layout
 
 ```text
@@ -97,7 +119,7 @@ whisper-local/
 - Default manual summary provider is the quality local Qwen model (`Qwen/Qwen3-1.7B`).
 - Background auto-title generation uses the faster Qwen model (`Qwen/Qwen3-0.6B`).
 - Override models with `QUALITY_INSTRUCTION_MODEL_NAME=...` or `FAST_INSTRUCTION_MODEL_NAME=...`.
-- Active transcription backend: OpenAI Whisper. Supported models are discovered from the installed backend and include `turbo` when the installed package supports it.
+- Active transcription backend: OpenAI Whisper by default, with opt-in whisper.cpp support through `TRANSCRIPTION_BACKEND=whisper.cpp`. Supported models are discovered from the installed backend and configured model paths.
 - Current non-goals: cloud transcription, hosted storage, multi-user collaboration, heavy database migration before it is needed, and a large framework rewrite.
 
 ## Benchmark Status
@@ -122,4 +144,4 @@ Setup: OpenAI Whisper in the repo venv, faster-whisper on CPU int8, and whisper.
 | faster-whisper | small | 0.161 | 3/4 |
 | whisper.cpp | small | 0.049 | 4/4 |
 
-Recommendation: keep OpenAI Whisper as the production baseline for now. Use `whisper.cpp` with `base` as the next backend experiment because it matched expected-term coverage with the best measured speed on this sample. Do not switch the default until there is a production adapter, model-path/download management, and a broader German/English benchmark set.
+Recommendation: keep OpenAI Whisper as the default production baseline for now. Use `whisper.cpp` with `base` as the next opt-in backend experiment because it matched expected-term coverage with the best measured speed on this sample. Do not switch the default until there is a broader German/English benchmark set.
