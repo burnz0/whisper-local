@@ -25,6 +25,7 @@ from storage import (
     save_upload,
     cleaned_transcript_text,
     update_record_collection,
+    update_record_extractions,
     update_record_notes,
     update_record_summary,
     update_record_tags,
@@ -33,6 +34,7 @@ from storage import (
     update_segment_text,
 )
 from summaries import (
+    generate_extractions,
     generate_summary,
     normalize_settings,
     slugify_title,
@@ -561,6 +563,19 @@ def register_routes(app) -> None:
         if updated is None:
             return jsonify({"ok": False, "error": "Record not found."}), 404
         return jsonify({"ok": True, "summary": updated.summary, "provider": updated.summary_provider, "title": updated.title})
+
+    @app.post("/transcripts/<record_id>/extract")
+    def extract_route(record_id: str):
+        settings = load_settings()
+        target = get_record(record_id)
+        if target is None:
+            return jsonify({"ok": False, "error": "Record not found."}), 404
+
+        action_items, entities, provider = generate_extractions(target.transcript_text, target.language, settings)
+        updated = update_record_extractions(record_id, action_items, entities, provider)
+        if updated is None:
+            return jsonify({"ok": False, "error": "Record not found."}), 404
+        return jsonify({"ok": True, "action_items": updated.action_items, "entities": updated.entities, "provider": updated.analysis_provider})
 
     @app.get("/audio/<filename>")
     def audio_file(filename: str):

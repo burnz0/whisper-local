@@ -90,6 +90,29 @@ class BackendBehaviorTest(unittest.TestCase):
         self.assertEqual(fallback_provider, "extractive")
         self.assertTrue(fallback)
 
+    def test_instruction_extraction_provider_success_and_fallback(self):
+        text = "Anna muss die Demo bis Freitag vorbereiten. Budgetrisiken mit OpenAI klaeren."
+        with mock.patch.object(summaries, "extract_with_instruction_model", return_value=(["Demo vorbereiten"], ["Anna", "OpenAI"])):
+            action_items, entities, provider = summaries.generate_extractions(
+                text,
+                "de",
+                {"summary_provider": "local_instruction_quality"},
+            )
+
+        with mock.patch.object(summaries, "extract_with_instruction_model", side_effect=RuntimeError("model unavailable")):
+            fallback_actions, fallback_entities, fallback_provider = summaries.generate_extractions(
+                text,
+                "de",
+                {"summary_provider": "local_instruction_quality"},
+            )
+
+        self.assertEqual(provider, "local_instruction_quality")
+        self.assertEqual(action_items, ["Demo vorbereiten"])
+        self.assertEqual(entities, ["Anna", "OpenAI"])
+        self.assertEqual(fallback_provider, "extractive")
+        self.assertTrue(fallback_actions)
+        self.assertIn("Anna", fallback_entities)
+
     def test_transcript_creation_uses_fast_initial_summary(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -466,6 +489,25 @@ class BackendBehaviorTest(unittest.TestCase):
         self.assertEqual(len(batch_mock.call_args.args[0]), 2)
         self.assertEqual(payload["redirect_url"], "/imports/batch123")
 
+    def test_extract_route_persists_action_items_and_entities(self):
+        target = mock.Mock(id="abc123", transcript_text="Anna muss die Demo vorbereiten.", language="de")
+        updated = mock.Mock(action_items=["Demo vorbereiten"], entities=["Anna"], analysis_provider="extractive")
+        with mock.patch.object(routes, "load_settings", return_value=app.DEFAULT_SETTINGS), mock.patch.object(
+            routes, "get_record", return_value=target
+        ), mock.patch.object(
+            routes, "generate_extractions", return_value=(["Demo vorbereiten"], ["Anna"], "extractive")
+        ) as extract_mock, mock.patch.object(
+            routes, "update_record_extractions", return_value=updated
+        ) as update_mock:
+            response = app.app.test_client().post("/transcripts/abc123/extract")
+
+        payload = response.get_json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["action_items"], ["Demo vorbereiten"])
+        self.assertEqual(payload["entities"], ["Anna"])
+        extract_mock.assert_called_once_with(target.transcript_text, target.language, app.DEFAULT_SETTINGS)
+        update_mock.assert_called_once_with("abc123", ["Demo vorbereiten"], ["Anna"], "extractive")
+
     def test_voice_note_extensions_are_allowed_and_saved(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -782,6 +824,7 @@ class BackendBehaviorTest(unittest.TestCase):
                 tagged = storage.update_record_tags("abc123", "Idea, idea, Follow Up")
                 collected = storage.update_record_collection("abc123", " Client Calls ")
                 noted = storage.update_record_notes("abc123", "Call Anna about the launch.")
+                extracted = storage.update_record_extractions("abc123", ["Call Anna."], ["Anna"], "extractive")
                 edited = storage.update_segment_text("abc123", 0, "Hallo Welt.")
                 flagged = storage.update_segment_flags("abc123", 0, bookmarked=True, highlighted=True)
                 spoken = storage.update_segment_speaker("abc123", 0, " Anna ")
@@ -791,6 +834,8 @@ class BackendBehaviorTest(unittest.TestCase):
             self.assertEqual(tagged.tags, ["idea", "follow up"])
             self.assertEqual(collected.collection, "Client Calls")
             self.assertEqual(noted.notes, "Call Anna about the launch.")
+            self.assertEqual(extracted.action_items, ["Call Anna."])
+            self.assertEqual(extracted.entities, ["Anna"])
             self.assertEqual(edited.transcript_text, "Hallo Welt.")
             self.assertTrue(flagged.segments[0]["bookmarked"])
             self.assertTrue(flagged.segments[0]["highlighted"])
@@ -799,6 +844,9 @@ class BackendBehaviorTest(unittest.TestCase):
             self.assertIn("- Collection: Client Calls", markdown)
             self.assertIn("## Notes", markdown)
             self.assertIn("Call Anna about the launch.", markdown)
+            self.assertIn("## Action Items", markdown)
+            self.assertIn("- Call Anna.", markdown)
+            self.assertIn("## Entities", markdown)
             self.assertIn("**Anna:**", markdown)
             self.assertIn("bookmarked, highlighted", markdown)
             self.assertNotIn("ähm", clean_text)

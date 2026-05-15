@@ -40,8 +40,11 @@
   const notesInput = document.getElementById("notes-input");
   const notesStatus = document.getElementById("notes-status");
   const refreshSummaryButton = document.getElementById("refresh-summary-button");
+  const extractInsightsButton = document.getElementById("extract-insights-button");
   const copySummaryButton = document.getElementById("copy-summary-button");
   const summaryCards = document.getElementById("summary-cards");
+  const actionItemsList = document.getElementById("action-items-list");
+  const entitiesList = document.getElementById("entities-list");
   const summaryProviderLabel = document.getElementById("summary-provider-label");
   const summaryState = document.getElementById("summary-state");
   const titleEl = document.getElementById("record-title");
@@ -1602,6 +1605,48 @@
       summaryState.className = `summary-state summary-state--${status}`;
       summaryState.dataset.status = status;
     };
+
+    const renderInsightList = (list, items, emptyText) => {
+      if (!list) return;
+      list.innerHTML = "";
+      const nextItems = Array.isArray(items) ? items : [];
+      if (!nextItems.length) {
+        const item = document.createElement("li");
+        item.className = "empty-state";
+        item.textContent = emptyText;
+        list.appendChild(item);
+        return;
+      }
+      nextItems.forEach((text) => {
+        const item = document.createElement("li");
+        item.textContent = text;
+        list.appendChild(item);
+      });
+    };
+
+    if (extractInsightsButton) {
+      extractInsightsButton.addEventListener("click", async () => {
+        extractInsightsButton.disabled = true;
+        extractInsightsButton.textContent = "Extracting...";
+        setSummaryState("generating", "Extracting locally");
+        try {
+          const response = await fetch(`/transcripts/${state.recordId}/extract`, { method: "POST" });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) {
+            throw new Error(payload.error || "Insight extraction failed.");
+          }
+          renderInsightList(actionItemsList, payload.action_items, "No action items found.");
+          renderInsightList(entitiesList, payload.entities, "No entities found.");
+          setSummaryState(payload.provider === "extractive" ? "fallback" : "ready", "Insights ready");
+          setActiveTab("summary-pane");
+        } catch (error) {
+          setSummaryState("error", error.message || "Insights failed");
+        } finally {
+          extractInsightsButton.disabled = false;
+          extractInsightsButton.textContent = "Extract insights";
+        }
+      });
+    }
 
     refreshSummaryButton.addEventListener("click", async () => {
       const isRetry = summaryState && summaryState.dataset.status === "error";

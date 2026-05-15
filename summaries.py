@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import re
 
-from analysis import SummaryRequest, SummaryResult
+from analysis import ExtractionRequest, ExtractionResult, SummaryRequest, SummaryResult
 from config import (
     DEFAULT_SETTINGS,
     FAST_INSTRUCTION_MODEL_NAME,
@@ -496,6 +496,121 @@ def parse_summary_output(text: str, max_items: int) -> list[str]:
     return unique[:max_items]
 
 
+def parse_extraction_output(text: str) -> tuple[list[str], list[str]]:
+    cleaned = text.strip()
+    if not cleaned:
+        return [], []
+    import json
+
+    try:
+        payload = json.loads(cleaned)
+    except json.JSONDecodeError:
+        payload = None
+    if isinstance(payload, dict):
+        action_items = payload.get("action_items", [])
+        entities = payload.get("entities", [])
+        return normalize_extraction_items(action_items, limit=8), normalize_extraction_items(entities, limit=16)
+
+    action_items = []
+    entities = []
+    current = ""
+    for line in cleaned.splitlines():
+        normalized = line.strip(" -•\t")
+        lowered = normalized.lower()
+        if not normalized:
+            continue
+        if lowered.startswith(("action items", "actions", "aufgaben", "to-dos", "todos")):
+            current = "action_items"
+            normalized = normalized.split(":", 1)[-1].strip() if ":" in normalized else ""
+        elif lowered.startswith(("entities", "personen", "entitaeten", "entitäten", "names")):
+            current = "entities"
+            normalized = normalized.split(":", 1)[-1].strip() if ":" in normalized else ""
+        if not normalized:
+            continue
+        if current == "entities":
+            entities.extend(part.strip() for part in normalized.split(","))
+        else:
+            action_items.append(normalized)
+    return normalize_extraction_items(action_items, limit=8), normalize_extraction_items(entities, limit=16)
+
+
+def normalize_extraction_items(items: object, *, limit: int) -> list[str]:
+    if not isinstance(items, list):
+        items = [items]
+    normalized = []
+    seen = set()
+    for item in items:
+        text = re.sub(r"\s+", " ", str(item or "")).strip(" -•\t.,;:")
+        if not text:
+            continue
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(text[:160])
+        if len(normalized) == limit:
+            break
+    return normalized
+
+
+ACTION_ITEM_PATTERNS = {
+    "de": r"\b(muss|muessen|müssen|soll|sollen|todo|aufgabe|erinner|klaeren|klären|vorbereiten|verteilen|bis)\b",
+    "en": r"\b(must|should|need(?:s)? to|todo|task|follow up|prepare|assign|clarify|by)\b",
+}
+
+
+def extract_action_items_heuristic(text: str, language: str, limit: int = 8) -> list[str]:
+    units = split_transcript_units(text)
+    pattern = ACTION_ITEM_PATTERNS.get(language, ACTION_ITEM_PATTERNS["en"])
+    candidates = []
+    for unit in units:
+        if re.search(pattern, unit, flags=re.IGNORECASE):
+            candidates.append(clean_generated_paragraph(unit, max_chars=160))
+    return normalize_extraction_items(candidates, limit=limit)
+
+
+def extract_entities_heuristic(text: str, limit: int = 16) -> list[str]:
+    cleaned = normalize_transcript_for_summary(text)
+    candidates = []
+    for match in re.finditer(r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}(?:\s+[A-ZÄÖÜ][A-Za-zÄÖÜäöüß-]{2,}){0,2}\b", cleaned):
+        value = match.group(0).strip()
+        if value.lower() in STOPWORDS or value.lower().startswith(("ich ", "das ", "die ", "der ", "this ", "the ")):
+            continue
+        candidates.append(value)
+    return normalize_extraction_items(candidates, limit=limit)
+
+
+def build_instruction_extraction_prompt(text: str, language: str) -> str:
+    if language == "de":
+        return (
+            "Extrahiere aus dem Transkript konkrete Aufgaben und wichtige Entitaeten.\n"
+            "Antworte nur als kompaktes JSON mit den Schluesseln action_items und entities.\n"
+            "action_items: kurze deutsche Aufgaben, keine erfundenen Punkte.\n"
+            "entities: Personen, Organisationen, Produkte, Orte oder wichtige Eigennamen.\n\n"
+            f"Transkript:\n{text[:3500]}\n\nJSON:"
+        )
+    return (
+        "Extract concrete action items and important entities from the transcript.\n"
+        "Return only compact JSON with keys action_items and entities.\n"
+        "action_items: short tasks, no invented items.\n"
+        "entities: people, organizations, products, places, or important named things.\n\n"
+        f"Transcript:\n{text[:3500]}\n\nJSON:"
+    )
+
+
+def extract_with_instruction_model(text: str, language: str, model_name: str = INSTRUCTION_SUMMARY_MODEL_NAME) -> tuple[list[str], list[str]]:
+    tokenizer, model = get_instruction_backend(model_name)
+    cleaned = normalize_transcript_for_summary(text)
+    if not cleaned:
+        return [], []
+    prompt = build_instruction_extraction_prompt(cleaned, language)
+    decoded = run_instruction_generation(tokenizer, model, prompt, max_new_tokens=220)
+    action_items, entities = parse_extraction_output(decoded)
+    if not action_items and not entities:
+        raise RuntimeError("local instruction extraction returned no usable items")
+    return action_items, entities
+
+
 def paragraphize_summary(items: list[str], max_chars: int = 420) -> list[str]:
     cleaned = [re.sub(r"\s+", " ", item).strip() for item in items if item and item.strip()]
     if not cleaned:
@@ -758,6 +873,33 @@ def generate_summary_for_request(request: SummaryRequest) -> SummaryResult:
             else:
                 logger.warning("summary provider failed; falling back to extractive: %s", message)
     return SummaryResult(sentence_summary(request.text, max_items=max_items, language=request.language), "extractive")
+
+
+def generate_extractions_for_request(request: ExtractionRequest) -> ExtractionResult:
+    provider = request.provider
+    if provider in {"local_instruction", "local_instruction_quality"}:
+        try:
+            model_name = QUALITY_INSTRUCTION_MODEL_NAME if provider == "local_instruction_quality" else FAST_INSTRUCTION_MODEL_NAME
+            action_items, entities = extract_with_instruction_model(request.text, request.language, model_name=model_name)
+            return ExtractionResult(action_items, entities, provider)
+        except Exception as exc:
+            message = str(exc).splitlines()[0] if str(exc) else exc.__class__.__name__
+            logger.warning("extraction provider failed; falling back to extractive: %s", message)
+    return ExtractionResult(
+        extract_action_items_heuristic(request.text, request.language),
+        extract_entities_heuristic(request.text),
+        "extractive",
+    )
+
+
+def generate_extractions(text: str, language: str, settings: dict) -> tuple[list[str], list[str], str]:
+    request = ExtractionRequest(
+        text=text,
+        language=language,
+        provider=settings["summary_provider"],
+    )
+    result = generate_extractions_for_request(request)
+    return result.action_items, result.entities, result.provider
 
 
 def generate_summary(text: str, language: str, settings: dict) -> tuple[list[str], str]:

@@ -18,9 +18,31 @@ class SummaryResult:
     provider: str
 
 
+@dataclass(frozen=True)
+class ExtractionRequest:
+    text: str
+    language: str
+    provider: str
+
+
+@dataclass(frozen=True)
+class ExtractionResult:
+    action_items: list[str]
+    entities: list[str]
+    provider: str
+
+
 class SummaryProvider(Protocol):
     code: str
     label: str
 
     def summarize(self, request: SummaryRequest) -> SummaryResult:
+        ...
+
+
+class ExtractionProvider(Protocol):
+    code: str
+    label: str
+
+    def extract(self, request: ExtractionRequest) -> ExtractionResult:
         ...

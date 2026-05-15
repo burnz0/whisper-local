@@ -1757,7 +1757,6 @@ body.is-playing .segment.is-active {
 .summary-list {
   padding: var(--space-4);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--space-4);
   height: 100%;
   overflow: auto;
@@ -1855,6 +1854,30 @@ body.is-playing .segment.is-active {
   color: var(--text);
   background: rgba(82, 207, 125, 0.07);
   box-shadow: -10px 0 0 rgba(82, 207, 125, 0.07);
+}
+
+.summary-insights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  max-width: 860px;
+}
+
+.summary-insights h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.summary-insights ul {
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(243, 245, 248, 0.9);
+  line-height: 1.6;
+}
+
+.summary-insights .empty-state {
+  color: var(--muted);
 }
 
 .notes-panel,

@@ -365,6 +365,7 @@
                 </div>
                 <div class="summary-actions">
                   <button class="secondary-action" type="button" id="copy-summary-button">Copy summary</button>
+                  <button class="secondary-action" type="button" id="extract-insights-button">Extract insights</button>
                   <button class="secondary-action" type="button" id="refresh-summary-button">Refresh summary</button>
                 </div>
               </div>
@@ -374,6 +375,28 @@
               {% else %}
               <article class="summary-card summary-card--empty">No summary available yet.</article>
               {% endfor %}
+              </div>
+              <div class="summary-insights">
+                <div>
+                  <h3>Action items</h3>
+                  <ul id="action-items-list">
+                    {% for item in selected.action_items %}
+                    <li>{{ item }}</li>
+                    {% else %}
+                    <li class="empty-state">No action items extracted yet.</li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                <div>
+                  <h3>Entities</h3>
+                  <ul id="entities-list">
+                    {% for item in selected.entities %}
+                    <li>{{ item }}</li>
+                    {% else %}
+                    <li class="empty-state">No entities extracted yet.</li>
+                    {% endfor %}
+                  </ul>
+                </div>
               </div>
             </div>
           </section>

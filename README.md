@@ -9,6 +9,7 @@ Private local-first Flask workspace for turning audio recordings into searchable
 - Persist background analysis job state in `data/analysis-jobs.json`.
 - Review segment-based transcripts with timestamps, search, rename, delete, copy, download, and local audio playback.
 - Generate local summaries and titles through a separate analysis provider boundary.
+- Extract action items and entities from transcripts with the same local analysis provider boundary.
 - Keep extractive summaries as the safe fallback when generative local models are unavailable or fail.
 - Show backend/model capability metadata so unsupported transcription combinations are hidden or disabled.
 - Cancel queued transcription jobs before they start. Active OpenAI Whisper jobs cannot be interrupted safely.
@@ -120,6 +121,7 @@ whisper-local/
 - Semantic search should start as an additive sidecar such as `data/search-index.json`, likely using `intfloat/multilingual-e5-small` over transcript segments, notes, and summaries.
 - Transcription and analysis are intentionally separate. Ingestion should stay fast and safe; heavier analysis can run on demand or in background jobs.
 - New transcripts save quickly with an extractive placeholder summary; Qwen only runs when a summary/title job is requested.
+- Action-item and entity extraction uses the configured local instruction provider when available, with an extractive fallback.
 - Default manual summary provider is the quality local Qwen model (`Qwen/Qwen3-1.7B`).
 - Background auto-title generation uses the faster Qwen model (`Qwen/Qwen3-0.6B`).
 - Override models with `QUALITY_INSTRUCTION_MODEL_NAME=...` or `FAST_INSTRUCTION_MODEL_NAME=...`.

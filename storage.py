@@ -73,6 +73,9 @@ class TranscriptRecord:
     tags: list[str]
     collection: str
     notes: str
+    action_items: list[str]
+    entities: list[str]
+    analysis_provider: str
     source_hash: str = ""
 
     @property
@@ -401,6 +404,8 @@ def record_from_payload(item: dict) -> TranscriptRecord:
     transcript_text, segments = clean_transcription_tail(transcript_text, segments)
     summary = item.get("summary") if isinstance(item.get("summary"), list) else []
     tags = item.get("tags") if isinstance(item.get("tags"), list) else []
+    action_items = item.get("action_items") if isinstance(item.get("action_items"), list) else []
+    entities = item.get("entities") if isinstance(item.get("entities"), list) else []
 
     if not summary:
         summary = paragraphize_summary(sentence_summary(transcript_text, language=language), max_chars=320)
@@ -429,6 +434,9 @@ def record_from_payload(item: dict) -> TranscriptRecord:
         tags=normalize_tags(tags),
         collection=normalize_collection(item.get("collection", DEFAULT_COLLECTION)),
         notes=str(item.get("notes", "")),
+        action_items=[str(entry).strip()[:160] for entry in action_items if str(entry).strip()],
+        entities=[str(entry).strip()[:160] for entry in entities if str(entry).strip()],
+        analysis_provider=str(item.get("analysis_provider") or ""),
         source_hash=str(item.get("source_hash") or ""),
     )
 
@@ -533,6 +541,9 @@ def create_transcript_from_audio(
         tags=[],
         collection=DEFAULT_COLLECTION,
         notes="",
+        action_items=[],
+        entities=[],
+        analysis_provider="",
         source_hash=source_hash,
     )
     persist_record(record)
@@ -703,6 +714,24 @@ def update_record_summary(record_id: str, summary: list[str], provider: str) -> 
         return updated_record
 
 
+def update_record_extractions(record_id: str, action_items: list[str], entities: list[str], provider: str) -> TranscriptRecord | None:
+    with locked_json_file(LIBRARY_PATH):
+        records = load_library()
+        updated_record = None
+        for record in records:
+            if record.id != record_id:
+                continue
+            record.action_items = [str(item).strip()[:160] for item in action_items if str(item).strip()]
+            record.entities = [str(item).strip()[:160] for item in entities if str(item).strip()]
+            record.analysis_provider = str(provider)
+            updated_record = record
+            break
+        if updated_record is None:
+            return None
+        save_library(records)
+        return updated_record
+
+
 def update_segment_text(record_id: str, segment_id: int, text: str) -> TranscriptRecord | None:
     cleaned = " ".join(text.strip().split())
     with locked_json_file(LIBRARY_PATH):
@@ -782,6 +811,11 @@ def markdown_export(record: TranscriptRecord) -> str:
     lines.extend(record.summary or ["No summary available yet."])
     if record.notes:
         lines.extend(["", "## Notes", "", record.notes])
+    if record.action_items:
+        lines.extend(["", "## Action Items", ""])
+        lines.extend(f"- {item}" for item in record.action_items)
+    if record.entities:
+        lines.extend(["", "## Entities", "", ", ".join(record.entities)])
     lines.extend(["", "## Transcript", ""])
     if record.segments:
         for segment in record.segments:
