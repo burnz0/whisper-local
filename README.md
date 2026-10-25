@@ -70,6 +70,10 @@ The benchmark command reports timing, realtime factor, expected-term coverage, c
 WHISPER_CPP_MODEL=/path/to/ggml-base.bin make benchmark AUDIO=/path/to/audio.ogg MODELS=base LANGUAGE=de
 ```
 
+## Versioning
+
+The version lives in `VERSION` (`major.minor.patch`). Before a new state is deployed, release it with the shared script from the repository root: `../tools/release.sh --dry-run`, then `../tools/release.sh` (patch by default; bumps `VERSION`, commits, tags `vX.Y.Z` and pushes from `main`).
+
 ## Transcription Backends
 
 OpenAI Whisper remains the default production backend:
